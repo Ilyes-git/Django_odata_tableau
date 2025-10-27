@@ -173,6 +173,11 @@ class ODataModelViewSet(viewsets.ModelViewSet):
     queryset = None
     serializer_class = None
     entity_set_name = None
+    _expand_fields = {}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._expand_fields = {}
 
     def get_registry_entry(self):
         """Récupère l'entry du registry pour cet entity set"""
@@ -193,6 +198,61 @@ class ODataModelViewSet(viewsets.ModelViewSet):
             pass
 
         return queryset
+
+    def get_serializer_context(self):
+        """Ajouter les paramètres OData au contexte du serializer pour drf-flex-fields"""
+        context = super().get_serializer_context()
+
+        # Traduire les paramètres OData en paramètres drf-flex-fields
+        # drf-flex-fields lit automatiquement 'expand' et 'fields' depuis les query_params
+        # Donc on va créer une vue spéciale de la request avec les params traduits
+
+        # Créer une wrapper autour de la request pour traduire les paramètres à la volée
+        class ODataQueryParamsWrapper:
+            """Wrapper qui traduit les paramètres OData en paramètres drf-flex-fields"""
+            def __init__(self, request):
+                self.request = request
+                self.translated_params = self._translate_odata_params()
+
+            def _translate_odata_params(self):
+                """Translate OData params ($expand) to drf-flex-fields params (expand)"""
+                translated = {}
+                for key, value in self.request.GET.items():
+                    if key == '$expand':
+                        translated['expand'] = value
+                    elif key == '$select':
+                        translated['select'] = value
+                    else:
+                        translated[key] = value
+                return translated
+
+            def __getattr__(self, name):
+                """Déléguer à la request originale"""
+                return getattr(self.request, name)
+
+            @property
+            def query_params(self):
+                """Retourner les params traduits comme drf-flex-fields les attend"""
+                # Créer un QueryDict-like object
+                class QueryParamsProxy:
+                    def __init__(self, params):
+                        self.params = params
+
+                    def get(self, key, default=None):
+                        return self.params.get(key, default)
+
+                    def getlist(self, key):
+                        value = self.params.get(key, '')
+                        if value:
+                            return value.split(',') if isinstance(value, str) else [value]
+                        return []
+
+                return QueryParamsProxy(self.translated_params)
+
+        # Remplacer la request dans le contexte par notre wrapper
+        context['request'] = ODataQueryParamsWrapper(context['request'])
+
+        return context
 
     def get_serializer_class(self):
         """Récupère le serializer depuis le registry"""
@@ -235,6 +295,7 @@ class ODataModelViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+
     def paginate_queryset(self, queryset):
         """Gère la pagination avec $skip et $top"""
         skip = int(self.request.GET.get("$skip", 0))
@@ -261,7 +322,7 @@ class ODataModelViewSet(viewsets.ModelViewSet):
         return selected_data
 
     def list(self, request, *args, **kwargs):
-        """GET /EntitySet - Liste avec support OData"""
+        """GET /EntitySet - Liste avec support OData ($filter, $orderby, $skip, $top, $select, $expand)"""
         try:
             queryset = self.get_queryset()
             total_count = queryset.count()
@@ -269,10 +330,11 @@ class ODataModelViewSet(viewsets.ModelViewSet):
             # Appliquer la pagination
             queryset = self.paginate_queryset(queryset)
 
+            # Créer le serializer avec le contexte contenant expand et select
             serializer = self.get_serializer(queryset, many=True)
             data = serializer.data
 
-            # Appliquer $select
+            # Appliquer $select pour filtrer les colonnes (si pas géré par le serializer)
             data = self.apply_select(data)
 
             # Ajouter métadonnées OData
@@ -297,17 +359,19 @@ class ODataModelViewSet(viewsets.ModelViewSet):
             return Response({"error": f"Erreur lors de la lecture: {str(e)}"}, status=500)
 
     def retrieve(self, request, *args, **kwargs):
-        """GET /EntitySet(id) - Entité spécifique"""
+        """GET /EntitySet(id) - Entité spécifique avec support $expand et $select"""
         try:
             instance = self.get_object()
             serializer = self.get_serializer(instance)
             data = serializer.data
 
+
             # Ajouter métadonnées OData
             entry = self.get_registry_entry()
-            data["@odata.type"] = f"#Odata.{entry['model'].__name__}" if entry else None
-            base_url = request.build_absolute_uri("/odata")
-            data["@odata.context"] = f"{base_url}/$metadata#{self.entity_set_name}('{kwargs.get('pk')}')"
+            if isinstance(data, dict):
+                data["@odata.type"] = f"#Odata.{entry['model'].__name__}" if entry else None
+                base_url = request.build_absolute_uri("/odata")
+                data["@odata.context"] = f"{base_url}/$metadata#{self.entity_set_name}('{kwargs.get('pk')}')"
 
             return Response(data)
         except Exception as e:

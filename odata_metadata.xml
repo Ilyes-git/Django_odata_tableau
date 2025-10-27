@@ -1,0 +1,88 @@
+<?xml version="1.0" ?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="Odata">
+      <EntityType Name="Author">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="100"/>
+        <Property Name="email" Type="Edm.String" Nullable="false" MaxLength="254"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="Book">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="title" Type="Edm.String" Nullable="false" MaxLength="200"/>
+        <Property Name="author_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="isbn" Type="Edm.String" Nullable="false" MaxLength="13"/>
+        <Property Name="pages" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="published_date" Type="Edm.Date" Nullable="false"/>
+        <Property Name="rating" Type="Edm.Decimal" Nullable="false"/>
+        <NavigationProperty Name="author" Type="Odata.Author"/>
+      </EntityType>
+      <EntityType Name="Car">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="brand" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="model" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="year" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="owner_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="owner" Type="Odata.Person"/>
+      </EntityType>
+      <EntityType Name="LogEntry">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="action_time" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="object_id" Type="Edm.String" Nullable="true"/>
+        <Property Name="object_repr" Type="Edm.String" Nullable="false" MaxLength="200"/>
+        <Property Name="action_flag" Type="Edm.Int16" Nullable="false"/>
+        <Property Name="change_message" Type="Edm.String" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="Person">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="first_name" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="last_name" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="birth_date" Type="Edm.Date" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Product">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="price" Type="Edm.Decimal" Nullable="false"/>
+        <Property Name="quantity" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="category" Type="Edm.String" Nullable="false" MaxLength="100"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="Session">
+        <Key>
+          <PropertyRef Name="session_key"/>
+        </Key>
+        <Property Name="session_key" Type="Edm.String" Nullable="false"/>
+        <Property Name="session_data" Type="Edm.String" Nullable="false"/>
+        <Property Name="expire_date" Type="Edm.DateTimeOffset" Nullable="false"/>
+      </EntityType>
+      <EntityContainer Name="Container">
+        <EntitySet Name="Authors" EntityType="Odata.Author"/>
+        <EntitySet Name="Books" EntityType="Odata.Book"/>
+        <EntitySet Name="Cars" EntityType="Odata.Car"/>
+        <EntitySet Name="LogEntrys" EntityType="Odata.LogEntry"/>
+        <EntitySet Name="Persons" EntityType="Odata.Person"/>
+        <EntitySet Name="Products" EntityType="Odata.Product"/>
+        <EntitySet Name="Sessions" EntityType="Odata.Session"/>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

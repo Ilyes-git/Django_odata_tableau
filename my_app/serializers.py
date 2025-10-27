@@ -1,24 +1,30 @@
+from rest_flex_fields import FlexFieldsModelSerializer
 from rest_framework.serializers import ALL_FIELDS
-
-from .models import Person, Car
-from rest_framework import serializers
-from .models import Product
+from .models import Person, Car, Product
 
 
-class PersonSerializer(serializers.ModelSerializer):
+class PersonSerializer(FlexFieldsModelSerializer):
+    """Serializer pour Person avec support $expand via drf-flex-fields"""
     class Meta:
         model = Person
-        fields = ALL_FIELDS
+        fields = ['id', 'first_name', 'last_name', 'birth_date', 'cars']
+        expandable_fields = {
+            'cars': ('my_app.serializers.CarSerializer', {'many': True})
+        }
 
 
-class CarSerializer(serializers.ModelSerializer):
+class CarSerializer(FlexFieldsModelSerializer):
+    """Serializer pour Car avec support $expand via drf-flex-fields"""
     class Meta:
         model = Car
-        fields = ALL_FIELDS
+        fields = ['id', 'brand', 'model', 'year', 'owner']
+        expandable_fields = {
+            'owner': ('my_app.serializers.PersonSerializer', {})
+        }
 
 
-
-class ProductSerializer(serializers.ModelSerializer):
+class ProductSerializer(FlexFieldsModelSerializer):
+    """Serializer pour Product avec support $expand"""
     class Meta:
         model = Product
         fields = ALL_FIELDS

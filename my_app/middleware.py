@@ -1,5 +1,6 @@
 from django.utils.deprecation import MiddlewareMixin
 
+
 class ForceJSONMiddleware(MiddlewareMixin):
     """Middleware pour forcer le format JSON pour les endpoints OData."""
 
@@ -8,3 +9,7 @@ class ForceJSONMiddleware(MiddlewareMixin):
             response["OData-Version"] = "4.0"
 
         return response
+
+
+
+
