@@ -1,11 +1,14 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.db.models import Q
+from rest_framework import viewsets
+from rest_framework.response import Response
 from .models import Person, Car, Product
 from .serializers import PersonSerializer, CarSerializer, ProductSerializer
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 import re
 import operator
+import json
 
 
 ODATA_MODELS_REGISTRY = {
@@ -25,14 +28,6 @@ ODATA_MODELS_REGISTRY = {
         'display_name': 'Products',
     }
 }
-
-def register_odata_model(entity_set_name, model, serializer, display_name=None):
-    """Enregistre un model pour OData"""
-    ODATA_MODELS_REGISTRY[entity_set_name] = {
-        'model': model,
-        'serializer': serializer,
-        'display_name': display_name or entity_set_name,
-    }
 
 
 class ODataFilterParser:
@@ -64,7 +59,6 @@ class ODataFilterParser:
             return Q()
 
         try:
-            # Séparer les conditions par 'and' et 'or'
             conditions = ODataFilterParser._tokenize_filter(filter_str)
             return ODataFilterParser._build_q_object(conditions, model)
         except Exception as e:
@@ -73,29 +67,24 @@ class ODataFilterParser:
     @staticmethod
     def _tokenize_filter(filter_str):
         """Tokenize le filtre en conditions simples."""
-        # Améliorer le pattern pour capturer tous les cas
-        # Pattern unique: field operator value
         pattern = r"(\w+)\s+(eq|ne|lt|le|gt|ge|startswith|endswith|contains)\s+(?:'([^']*)'|(\d+(?:\.\d+)?)|(\d{4}-\d{2}-\d{2}))"
 
         tokens = []
         last_end = 0
 
         for match in re.finditer(pattern, filter_str):
-            # Ajouter les opérateurs logiques avant cette condition
             between_text = filter_str[last_end:match.start()].strip()
             if between_text and between_text.lower() in ['and', 'or']:
                 tokens.append(between_text.lower())
 
-            # Extraire la condition
             field = match.group(1)
             op = match.group(2)
 
-            # La valeur peut être une chaîne (groupe 3), un nombre (groupe 4), ou une date (groupe 5)
-            if match.group(3) is not None:  # String value
+            if match.group(3) is not None:
                 value = match.group(3)
-            elif match.group(4) is not None:  # Number value
+            elif match.group(4) is not None:
                 value = float(match.group(4)) if '.' in match.group(4) else int(match.group(4))
-            elif match.group(5) is not None:  # Date value
+            elif match.group(5) is not None:
                 value = match.group(5)
             else:
                 continue
@@ -117,16 +106,14 @@ class ODataFilterParser:
         current_op = 'and'
 
         for token in tokens:
-            if isinstance(token, str):  # Opérateur logique
+            if isinstance(token, str):
                 current_op = token
-            elif isinstance(token, dict):  # Condition
+            elif isinstance(token, dict):
                 field = token['field']
                 op = token['op']
                 value = token['value']
 
-                # Construire la requête Django
                 if op in ODataFilterParser.OPERATORS:
-                    # Opérateurs de comparaison simples
                     q = Q(**{f"{field}__{ODataFilterParser._map_operator(op)}": value})
                 elif op == 'startswith':
                     q = Q(**{f"{field}__istartswith": value})
@@ -142,7 +129,6 @@ class ODataFilterParser:
                 else:
                     q_objects.append(('and', q))
 
-        # Fusionner les conditions
         if not q_objects:
             return Q()
 
@@ -160,7 +146,7 @@ class ODataFilterParser:
         """Mappe les opérateurs OData aux lookups Django."""
         mapping = {
             'eq': 'exact',
-            'ne': 'ne',  # Géré avec ~Q
+            'ne': 'ne',
             'lt': 'lt',
             'le': 'lte',
             'gt': 'gt',
@@ -169,45 +155,46 @@ class ODataFilterParser:
         return mapping.get(op, 'exact')
 
 
-class GenericODataView(View):
-    """Vue générique pour OData — supporte n'importe quel model"""
+class ODataModelViewSet(viewsets.ModelViewSet):
+    """ViewSet générique dynamique pour OData - s'adapte au registry"""
 
-    def get_registry_entry(self, entity_set_name):
-        """Récupère l'entry du registry pour un entity set"""
-        return ODATA_MODELS_REGISTRY.get(entity_set_name)
+    # Seront définis dynamiquement
+    queryset = None
+    serializer_class = None
+    entity_set_name = None
 
-    def get_odata_json_response(self, data, entity_set_name, context_url=None, count=None):
-        """Formater une réponse au format OData JSON avec métadonnées complètes."""
-        # Obtenir le type OData depuis le registry
-        entry = self.get_registry_entry(entity_set_name)
-        odata_type = f"#DjangoOData.{entry['model'].__name__}" if entry else None
+    def get_registry_entry(self):
+        """Récupère l'entry du registry pour cet entity set"""
+        return ODATA_MODELS_REGISTRY.get(self.entity_set_name)
 
-        if isinstance(data, list):
-            for item in data:
-                if isinstance(item, dict) and odata_type:
-                    item["@odata.type"] = odata_type
-        else:
-            if isinstance(data, dict) and odata_type:
-                data["@odata.type"] = odata_type
-
-        if isinstance(data, list):
-            response_data = {"value": data}
-        else:
-            response_data = data
-
-        if context_url:
-            response_data["@odata.context"] = context_url
-
-        if count is not None:
-            response_data["@odata.count"] = count
-
-        return response_data
-
-    def apply_odata_params(self, queryset, entity_set_name):
-        """Applique les paramètres OData ($filter, $orderby, $skip, $top, $select)."""
-        entry = self.get_registry_entry(entity_set_name)
+    def get_queryset(self):
+        """Retourner le queryset avec les paramètres OData appliqués"""
+        entry = self.get_registry_entry()
         if not entry:
-            raise ValueError(f"Entity set '{entity_set_name}' non enregistré")
+            return entry['model'].objects.none()
+
+        queryset = entry['model'].objects.all()
+
+        # Appliquer les paramètres OData
+        try:
+            queryset = self.apply_odata_params(queryset)
+        except ValueError:
+            pass
+
+        return queryset
+
+    def get_serializer_class(self):
+        """Récupère le serializer depuis le registry"""
+        entry = self.get_registry_entry()
+        if entry:
+            return entry['serializer']
+        return self.serializer_class
+
+    def apply_odata_params(self, queryset):
+        """Applique les paramètres OData ($filter, $orderby, $skip, $top)"""
+        entry = self.get_registry_entry()
+        if not entry:
+            raise ValueError(f"Entity set '{self.entity_set_name}' non enregistré")
 
         model = entry['model']
 
@@ -220,7 +207,7 @@ class GenericODataView(View):
             except Exception as e:
                 raise ValueError(f"Filtre invalide: {str(e)}")
 
-        # $orderby (comma-separated: field asc, field2 desc)
+        # $orderby
         orderby_param = self.request.GET.get("$orderby", "")
         if orderby_param:
             order_fields = []
@@ -235,10 +222,10 @@ class GenericODataView(View):
             if order_fields:
                 queryset = queryset.order_by(*order_fields)
 
-        # Total count avant pagination
-        total_count = queryset.count()
+        return queryset
 
-        # $skip et $top
+    def paginate_queryset(self, queryset):
+        """Gère la pagination avec $skip et $top"""
         skip = int(self.request.GET.get("$skip", 0))
         top = int(self.request.GET.get("$top", 50))
 
@@ -247,10 +234,11 @@ class GenericODataView(View):
         if top > 0:
             queryset = queryset[:top]
 
-        return queryset, total_count
+        return queryset
 
-    def apply_select(self, data, select_param):
-        """Applique le paramètre $select pour filtrer les colonnes."""
+    def apply_select(self, data):
+        """Applique le paramètre $select pour filtrer les colonnes"""
+        select_param = self.request.GET.get("$select", "")
         if not select_param or not isinstance(data, list):
             return data
 
@@ -261,164 +249,58 @@ class GenericODataView(View):
             selected_data.append(selected_item)
         return selected_data
 
-
-class ODataEntitySetView(GenericODataView):
-    """Vue générique pour un entity set spécifique (collections et détails)"""
-
-    def get(self, request, entity_set_name, pk=None, *args, **kwargs):
-        """GET /EntitySet ou GET /EntitySet(id)"""
+    def list(self, request, *args, **kwargs):
+        """GET /EntitySet - Liste avec support OData"""
         try:
-            self.request = request
-            entry = self.get_registry_entry(entity_set_name)
+            queryset = self.get_queryset()
+            total_count = queryset.count()
 
-            if not entry:
-                return JsonResponse(
-                    {"error": f"Entity set '{entity_set_name}' non trouvé"},
-                    status=404
-                )
+            # Appliquer la pagination
+            queryset = self.paginate_queryset(queryset)
 
-            model = entry['model']
-            serializer_class = entry['serializer']
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
 
-            # GET d'une entité spécifique
-            if pk is not None:
-                try:
-                    obj = model.objects.get(pk=pk)
-                    serializer = serializer_class(obj)
-                    data = serializer.data
+            # Appliquer $select
+            data = self.apply_select(data)
 
-                    base_url = request.build_absolute_uri("/odata")
-                    response_data = self.get_odata_json_response(
-                        data,
-                        entity_set_name,
-                        context_url=f"{base_url}/$metadata#{entity_set_name}('{pk}')"
-                    )
-                except model.DoesNotExist:
-                    return JsonResponse(
-                        {"error": f"{model.__name__} avec ID {pk} non trouvée"},
-                        status=404
-                    )
-            else:
-                # GET de la liste
-                queryset, total_count = self.apply_odata_params(model.objects.all(), entity_set_name)
-                serializer = serializer_class(queryset, many=True)
-                data = serializer.data
+            # Ajouter métadonnées OData
+            entry = self.get_registry_entry()
+            odata_type = f"#DjangoOData.{entry['model'].__name__}" if entry else None
+            for item in data:
+                if isinstance(item, dict) and odata_type:
+                    item["@odata.type"] = odata_type
 
-                # Appliquer $select
-                select_param = request.GET.get("$select", "")
-                if select_param:
-                    data = self.apply_select(data, select_param)
+            # Formater réponse OData
+            base_url = request.build_absolute_uri("/odata")
+            response_data = {
+                "value": data,
+                "@odata.context": f"{base_url}/$metadata#{self.entity_set_name}",
+                "@odata.count": total_count
+            }
 
-                base_url = request.build_absolute_uri("/odata")
-                response_data = self.get_odata_json_response(
-                    data,
-                    entity_set_name,
-                    context_url=f"{base_url}/$metadata#{entity_set_name}",
-                    count=total_count
-                )
-
-            response = JsonResponse(response_data)
-            response["Content-Type"] = "application/json;odata.metadata=minimal;charset=utf-8"
-            return response
-
+            return Response(response_data)
         except ValueError as ve:
-            return JsonResponse({"error": str(ve)}, status=400)
+            return Response({"error": str(ve)}, status=400)
         except Exception as e:
-            return JsonResponse(
-                {"error": f"Erreur lors de la lecture: {str(e)}"},
-                status=500
-            )
+            return Response({"error": f"Erreur lors de la lecture: {str(e)}"}, status=500)
 
-
-class ODataMetadataEndpoint(View):
-    """
-    Endpoint pour exposer le schéma metadata OData.
-    Accessible via GET /odata/$metadata
-    """
-
-    def get(self, request, *args, **kwargs):
-        """
-        Générer et retourner le schéma metadata EDMX OData v4.
-
-        Paramètres query optionnels:
-            format: 'xml' (défaut) ou 'json'
-        """
+    def retrieve(self, request, *args, **kwargs):
+        """GET /EntitySet(id) - Entité spécifique"""
         try:
-            output_format = request.GET.get('format', 'xml').lower()
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            data = serializer.data
 
-            # Valider le format
-            if output_format not in ['xml', 'json']:
-                output_format = 'xml'
+            # Ajouter métadonnées OData
+            entry = self.get_registry_entry()
+            data["@odata.type"] = f"#DjangoOData.{entry['model'].__name__}" if entry else None
+            base_url = request.build_absolute_uri("/odata")
+            data["@odata.context"] = f"{base_url}/$metadata#{self.entity_set_name}('{kwargs.get('pk')}')"
 
-            # Créer le générateur
-            generator = ODataMetadataGenerator(
-                namespace="DjangoOData",
-                service_name="Container",
-                include_auth=False
-            )
-
-            # Générer le metadata
-            metadata_content = generator.generate(output_format=output_format)
-
-            # Retourner la réponse avec le bon Content-Type
-            if output_format == 'json':
-                response = JsonResponse(
-                    generator.entity_types,  # Retourner aussi un résumé JSON
-                    status=200,
-                    safe=False
-                )
-                response['Content-Type'] = 'application/json;charset=utf-8'
-            else:
-                response = HttpResponse(metadata_content, content_type='application/xml')
-
-            return response
-
+            return Response(data)
         except Exception as e:
-            return JsonResponse(
-                {
-                    'error': 'Erreur lors de la génération du metadata',
-                    'detail': str(e)
-                },
-                status=500
-            )
-
-
-class ODataMetadataJsonEndpoint(View):
-    """
-    Endpoint pour exposer le schéma metadata en format JSON.
-    Accessible via GET /odata/$metadata/json
-    """
-
-    def get(self, request, *args, **kwargs):
-        """Retourner le schéma metadata au format JSON."""
-        try:
-            # Créer le générateur
-            generator = ODataMetadataGenerator(
-                namespace="DjangoOData",
-                service_name="Container",
-                include_auth=False
-            )
-
-            # Générer le metadata
-            metadata_content = generator.generate(output_format='json')
-
-            # Parser le JSON et le retourner
-            import json
-            metadata_dict = json.loads(metadata_content)
-
-            response = JsonResponse(metadata_dict, status=200)
-            response['Content-Type'] = 'application/json;charset=utf-8'
-
-            return response
-
-        except Exception as e:
-            return JsonResponse(
-                {
-                    'error': 'Erreur lors de la génération du metadata',
-                    'detail': str(e)
-                },
-                status=500
-            )
+            return Response({"error": str(e)}, status=500)
 
 
 class ODataServiceDocumentView(View):
@@ -429,7 +311,6 @@ class ODataServiceDocumentView(View):
         try:
             base_url = request.build_absolute_uri("/odata/").rstrip("/")
 
-            # Générer la liste des entity sets depuis le registry
             entity_sets = []
             for entity_set_name, entry in ODATA_MODELS_REGISTRY.items():
                 entity_sets.append({
@@ -459,3 +340,72 @@ class ODataServiceDocumentView(View):
             )
 
 
+class ODataMetadataEndpoint(View):
+    """Endpoint pour exposer le schéma metadata OData."""
+
+    def get(self, request, *args, **kwargs):
+        """Générer et retourner le schéma metadata EDMX OData v4."""
+        try:
+            output_format = request.GET.get('format', 'xml').lower()
+
+            if output_format not in ['xml', 'json']:
+                output_format = 'xml'
+
+            generator = ODataMetadataGenerator(
+                namespace="DjangoOData",
+                service_name="Container",
+                include_auth=False
+            )
+
+            metadata_content = generator.generate(output_format=output_format)
+
+            if output_format == 'json':
+                response = JsonResponse(
+                    generator.entity_types,
+                    status=200,
+                    safe=False
+                )
+                response['Content-Type'] = 'application/json;charset=utf-8'
+            else:
+                response = HttpResponse(metadata_content, content_type='application/xml')
+
+            return response
+
+        except Exception as e:
+            return JsonResponse(
+                {
+                    'error': 'Erreur lors de la génération du metadata',
+                    'detail': str(e)
+                },
+                status=500
+            )
+
+
+class ODataMetadataJsonEndpoint(View):
+    """Endpoint pour exposer le schéma metadata en format JSON."""
+
+    def get(self, request, *args, **kwargs):
+        """Retourner le schéma metadata au format JSON."""
+        try:
+            generator = ODataMetadataGenerator(
+                namespace="DjangoOData",
+                service_name="Container",
+                include_auth=False
+            )
+
+            metadata_content = generator.generate(output_format='json')
+            metadata_dict = json.loads(metadata_content)
+
+            response = JsonResponse(metadata_dict, status=200)
+            response['Content-Type'] = 'application/json;charset=utf-8'
+
+            return response
+
+        except Exception as e:
+            return JsonResponse(
+                {
+                    'error': 'Erreur lors de la génération du metadata',
+                    'detail': str(e)
+                },
+                status=500
+            )
