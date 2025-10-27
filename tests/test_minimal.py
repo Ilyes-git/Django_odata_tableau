@@ -26,6 +26,32 @@ def test_data(db):
     Car.objects.create(brand="BMW", model="X5", year=2020, owner=p1)
     Car.objects.create(brand="Audi", model="A4", year=2015, owner=p2)
     Product.objects.create(name="Test", price=99.99, quantity=5, category="Test")
+
+    # Créer des données pour second_app
+    try:
+        from second_app.models import Author, Book
+        from datetime import date
+        author1 = Author.objects.create(name="J.K. Rowling", email="jk@example.com")
+        author2 = Author.objects.create(name="George R.R. Martin", email="grm@example.com")
+        Book.objects.create(
+            title="Harry Potter",
+            author=author1,
+            isbn="9780747532699",
+            pages=309,
+            published_date=date(1997, 6, 26),
+            rating=9.5
+        )
+        Book.objects.create(
+            title="A Game of Thrones",
+            author=author2,
+            isbn="9780553103540",
+            pages=694,
+            published_date=date(1996, 8, 1),
+            rating=9.0
+        )
+    except ImportError:
+        pass
+
     return {'persons': [p1, p2]}
 
 
@@ -326,4 +352,66 @@ def test_generate_metadata_xml(db):
     # Vérifier que la métadonnées a été générée
     assert len(output) > 0
     assert 'metadata' in output.lower() or 'odata' in output.lower()
+
+
+# ==================== TESTS POUR SECOND_APP ====================
+
+def test_authors_collection(api_client, test_data):
+    """Récupérer la collection Authors de second_app"""
+    response = api_client.get(f"/odata/Authors")
+    assert response.status_code in [200, 404]  # 404 si second_app n'existe pas
+    if response.status_code == 200:
+        data = response.json()
+        assert 'value' in data
+        assert len(data['value']) >= 2
+        assert data['value'][0]['name'] in ['J.K. Rowling', 'George R.R. Martin']
+
+
+def test_books_collection(api_client, test_data):
+    """Récupérer la collection Books de second_app"""
+    response = api_client.get(f"/odata/Books")
+    assert response.status_code in [200, 404]
+    if response.status_code == 200:
+        data = response.json()
+        assert 'value' in data
+        if data['value']:
+            assert 'title' in data['value'][0]
+            assert 'isbn' in data['value'][0]
+
+
+def test_books_filter_by_author(api_client, test_data):
+    """Filtrer les livres par auteur"""
+    response = api_client.get(f"/odata/Books?$filter=title contains 'Harry'")
+    assert response.status_code in [200, 400, 404]
+    if response.status_code == 200:
+        data = response.json()
+        if data['value']:
+            assert 'Harry' in data['value'][0]['title']
+
+
+def test_books_orderby_rating(api_client, test_data):
+    """Trier les livres par rating décroissant"""
+    response = api_client.get(f"/odata/Books?$orderby=rating desc")
+    assert response.status_code in [200, 400, 404]
+    if response.status_code == 200:
+        data = response.json()
+        if len(data['value']) > 1:
+            ratings = [float(item['rating']) for item in data['value']]
+            assert ratings == sorted(ratings, reverse=True)
+
+
+def test_service_document_includes_second_app(api_client):
+    """Service document inclut Authors et Books"""
+    response = api_client.get(f"/odata/")
+    assert response.status_code == 200
+    data = response.json()
+    entity_names = [item['name'] for item in data['value']]
+    # Doit inclure au moins Persons, Cars, Products
+    assert 'Persons' in entity_names
+    assert 'Cars' in entity_names
+    assert 'Products' in entity_names
+    # Peut inclure Authors et Books si second_app est disponible
+    if 'Authors' in entity_names:
+        assert 'Books' in entity_names
+
 

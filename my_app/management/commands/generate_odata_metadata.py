@@ -7,7 +7,7 @@ Usage:
 
 Options:
     --output, -o: Chemin du fichier de sortie (défaut: odata_metadata.xml)
-    --namespace: Espace de noms pour les entités (défaut: DjangoOData)
+    --namespace: Espace de noms pour les entités (défaut: Odata)
     --service-name: Nom du conteneur de service (défaut: Container)
     --include-auth: Inclure les modèles d'authentification (défaut: True)
     --format: Format de sortie: 'xml' ou 'json' (défaut: xml)
@@ -62,7 +62,7 @@ class ODataMetadataGenerator:
 
     def __init__(
         self,
-        namespace: str = "DjangoOData",
+        namespace: str = "Odata",
         service_name: str = "Container",
         include_auth: bool = True
     ):
@@ -366,8 +366,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--namespace',
             type=str,
-            default='DjangoOData',
-            help='Espace de noms pour les entités (défaut: DjangoOData)'
+            default='Odata',
+            help='Espace de noms pour les entités (défaut: Odata)'
         )
 
         parser.add_argument(

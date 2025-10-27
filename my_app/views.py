@@ -9,6 +9,9 @@ from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 import re
 import operator
 import json
+from second_app.models import Author, Book
+from second_app.serializers import AuthorSerializer, BookSerializer
+
 
 
 ODATA_MODELS_REGISTRY = {
@@ -26,8 +29,19 @@ ODATA_MODELS_REGISTRY = {
         'model': Product,
         'serializer': ProductSerializer,
         'display_name': 'Products',
+    },
+    'Authors': {
+        'model': Author,
+        'serializer': AuthorSerializer,
+        'display_name': 'Authors',
+    },
+    'Books': {
+        'model': Book,
+        'serializer': BookSerializer,
+        'display_name': 'Books',
     }
 }
+
 
 
 class ODataFilterParser:
@@ -42,9 +56,6 @@ class ODataFilterParser:
         'gt': operator.gt,
         'ge': operator.ge,
     }
-
-    # Fonctions de chaîne OData
-    STRING_FUNCTIONS = ['startswith', 'endswith', 'contains', 'toupper', 'tolower', 'length']
 
     @staticmethod
     def parse_filter(filter_str, model):
@@ -266,7 +277,7 @@ class ODataModelViewSet(viewsets.ModelViewSet):
 
             # Ajouter métadonnées OData
             entry = self.get_registry_entry()
-            odata_type = f"#DjangoOData.{entry['model'].__name__}" if entry else None
+            odata_type = f"#Odata.{entry['model'].__name__}" if entry else None
             for item in data:
                 if isinstance(item, dict) and odata_type:
                     item["@odata.type"] = odata_type
@@ -294,7 +305,7 @@ class ODataModelViewSet(viewsets.ModelViewSet):
 
             # Ajouter métadonnées OData
             entry = self.get_registry_entry()
-            data["@odata.type"] = f"#DjangoOData.{entry['model'].__name__}" if entry else None
+            data["@odata.type"] = f"#Odata.{entry['model'].__name__}" if entry else None
             base_url = request.build_absolute_uri("/odata")
             data["@odata.context"] = f"{base_url}/$metadata#{self.entity_set_name}('{kwargs.get('pk')}')"
 
@@ -352,7 +363,7 @@ class ODataMetadataEndpoint(View):
                 output_format = 'xml'
 
             generator = ODataMetadataGenerator(
-                namespace="DjangoOData",
+                namespace="Odata",
                 service_name="Container",
                 include_auth=False
             )
@@ -388,7 +399,7 @@ class ODataMetadataJsonEndpoint(View):
         """Retourner le schéma metadata au format JSON."""
         try:
             generator = ODataMetadataGenerator(
-                namespace="DjangoOData",
+                namespace="Odata",
                 service_name="Container",
                 include_auth=False
             )
