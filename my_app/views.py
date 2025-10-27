@@ -18,27 +18,22 @@ ODATA_MODELS_REGISTRY = {
     'Persons': {
         'model': Person,
         'serializer': PersonSerializer,
-        'display_name': 'Persons',
     },
     'Cars': {
         'model': Car,
         'serializer': CarSerializer,
-        'display_name': 'Cars',
     },
     'Products': {
         'model': Product,
         'serializer': ProductSerializer,
-        'display_name': 'Products',
     },
     'Authors': {
         'model': Author,
         'serializer': AuthorSerializer,
-        'display_name': 'Authors',
     },
     'Books': {
         'model': Book,
         'serializer': BookSerializer,
-        'display_name': 'Books',
     }
 }
 
