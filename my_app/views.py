@@ -418,6 +418,12 @@ class ODataModelViewSet(ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        if request.path.startswith("/odata/"):
+            response["OData-Version"] = "4.0"
+        return response
+
 
 class ODataServiceDocumentView(View):
     """Service document générique qui expose tous les entity sets enregistrés"""
@@ -448,12 +454,15 @@ class ODataServiceDocumentView(View):
                 "application/json;odata.metadata=minimal;"
                 "odata.streaming=true;IEEE754Compatible=false;charset=utf-8"
             )
+            response["OData-Version"] = "4.0"
             return response
         except Exception as e:
-            return JsonResponse(
+            response = JsonResponse(
                 {"error": str(e)},
                 status=500
             )
+            response["OData-Version"] = "4.0"
+            return response
 
 
 class ODataMetadataEndpoint(View):
@@ -482,19 +491,23 @@ class ODataMetadataEndpoint(View):
                     safe=False
                 )
                 response['Content-Type'] = 'application/json;charset=utf-8'
+                response["OData-Version"] = "4.0"
             else:
                 response = HttpResponse(metadata_content, content_type='application/xml')
+                response["OData-Version"] = "4.0"
 
             return response
 
         except Exception as e:
-            return JsonResponse(
+            response = JsonResponse(
                 {
                     'error': 'Erreur lors de la génération du metadata',
                     'detail': str(e)
                 },
                 status=500
             )
+            response["OData-Version"] = "4.0"
+            return response
 
 
 class ODataMetadataJsonEndpoint(View):
@@ -514,14 +527,17 @@ class ODataMetadataJsonEndpoint(View):
 
             response = JsonResponse(metadata_dict, status=200)
             response['Content-Type'] = 'application/json;charset=utf-8'
+            response["OData-Version"] = "4.0"
 
             return response
 
         except Exception as e:
-            return JsonResponse(
+            response = JsonResponse(
                 {
                     'error': 'Erreur lors de la génération du metadata',
                     'detail': str(e)
                 },
                 status=500
             )
+            response["OData-Version"] = "4.0"
+            return response
