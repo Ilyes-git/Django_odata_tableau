@@ -38,7 +38,7 @@ class TestPopulateVesselDataCommand:
             assert sc.draught_m > 0
 
     def test_command_creates_ports(self):
-        """Test que la commande crée les Ports"""
+        """Test que la commande crée les prots"""
         out = StringIO()
         call_command('populate_vessel_data', '--count', '5', stdout=out)
 

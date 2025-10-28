@@ -30,7 +30,7 @@ MODELS_BY_BRAND = {
 
 
 class Command(BaseCommand):
-    help = "Populate la base avec des Persons et Cars (seed de démo)."
+    help = "Populate la base avec des persons et cars (seed de démo)."
 
     def add_arguments(self, parser):
         parser.add_argument(

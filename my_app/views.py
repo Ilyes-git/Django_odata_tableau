@@ -1,10 +1,11 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
-from django.db.models import Q, Model
+from django.db.models import Q
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from typing import Dict, Type
+from rest_framework.serializers import ALL_FIELDS
+from rest_flex_fields import FlexFieldsModelSerializer
 import importlib
 import re
 import operator
@@ -31,25 +32,25 @@ from vessel.models import (
 )
 
 ODATA_MODELS_REGISTRY = {
-        'Persons': Person,
-        'Cars': Car,
-        'Products': Product,
-        'Authors': Author,
-        'Books': Book,
-        'ShipClasses': ShipClass,
-        'Ports': Port,
-        'Organisations': Organisation,
-        'Roles': Role,
-        'Purposes': Purpose,
-        'Tasks': Task,
-        'Vessels': Vessel,
-        'VesselQualifications': VesselQualification,
-        'VesselPurposes': VesselPurpose,
-        'OperationalParameters': OperationalParameter,
-        'VesselStakeholders': VesselStakeholder,
-        'VesselFlagMmsiHistories': VesselFlagMmsiHistory,
-        'Projects': Project,
-        'VesselProjectHistories': VesselProjectHistory,
+        'persons': Person,
+        'cars': Car,
+        'products': Product,
+        'authors': Author,
+        'books': Book,
+        'ship_classes': ShipClass,
+        'ports': Port,
+        'organisations': Organisation,
+        'roles': Role,
+        'purposes': Purpose,
+        'tasks': Task,
+        'vessels': Vessel,
+        'vessel_qualifications': VesselQualification,
+        'vessel_purposes': VesselPurpose,
+        'operational_parameters': OperationalParameter,
+        'vessel_stake_holders': VesselStakeholder,
+        'vessel_flag_mmsi_histories': VesselFlagMmsiHistory,
+        'projects': Project,
+        'vessel_project_histories': VesselProjectHistory,
     }
 
 
@@ -278,7 +279,11 @@ class ODataModelViewSet(ModelViewSet):
             for module in serializer_modules:
                 if hasattr(module, serializer_name):
                     return getattr(module, serializer_name)
-            raise ValueError(f"Serializer '{serializer_name}' non trouvé pour le modèle '{entry.__name__}'")
+            # Si le serializer n'est pas trouvé, le créer dynamiquement
+            serializer_class = type(serializer_name, (FlexFieldsModelSerializer,), {
+                'Meta': type('Meta', (), {'model': entry, 'fields': ALL_FIELDS})
+            })
+            return serializer_class
         return self.serializer_class
 
     def apply_odata_params(self, queryset):
