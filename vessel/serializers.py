@@ -19,49 +19,42 @@ from .models import (
 
 
 class ShipClassSerializer(FlexFieldsModelSerializer):
-    """Serializer pour ShipClass avec support $expand"""
     class Meta:
         model = ShipClass
         fields = ALL_FIELDS
 
 
 class PortSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Port avec support $expand"""
     class Meta:
         model = Port
         fields = ALL_FIELDS
 
 
 class OrganisationSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Organisation avec support $expand"""
     class Meta:
         model = Organisation
         fields = ALL_FIELDS
 
 
 class RoleSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Role avec support $expand"""
     class Meta:
         model = Role
         fields = ALL_FIELDS
 
 
 class PurposeSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Purpose avec support $expand"""
     class Meta:
         model = Purpose
         fields = ALL_FIELDS
 
 
 class TaskSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Task avec support $expand"""
     class Meta:
         model = Task
         fields = ALL_FIELDS
 
 
 class VesselSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Vessel avec support $expand"""
     class Meta:
         model = Vessel
         fields = ALL_FIELDS
@@ -72,7 +65,6 @@ class VesselSerializer(FlexFieldsModelSerializer):
 
 
 class VesselQualificationSerializer(FlexFieldsModelSerializer):
-    """Serializer pour VesselQualification avec support $expand"""
     class Meta:
         model = VesselQualification
         fields = ALL_FIELDS
@@ -83,7 +75,6 @@ class VesselQualificationSerializer(FlexFieldsModelSerializer):
 
 
 class VesselPurposeSerializer(FlexFieldsModelSerializer):
-    """Serializer pour VesselPurpose avec support $expand"""
     class Meta:
         model = VesselPurpose
         fields = ALL_FIELDS
@@ -94,7 +85,6 @@ class VesselPurposeSerializer(FlexFieldsModelSerializer):
 
 
 class OperationalParameterSerializer(FlexFieldsModelSerializer):
-    """Serializer pour OperationalParameter avec support $expand"""
     class Meta:
         model = OperationalParameter
         fields = ALL_FIELDS
@@ -106,7 +96,6 @@ class OperationalParameterSerializer(FlexFieldsModelSerializer):
 
 
 class VesselStakeholderSerializer(FlexFieldsModelSerializer):
-    """Serializer pour VesselStakeholder avec support $expand"""
     class Meta:
         model = VesselStakeholder
         fields = ALL_FIELDS
@@ -118,7 +107,6 @@ class VesselStakeholderSerializer(FlexFieldsModelSerializer):
 
 
 class VesselFlagMmsiHistorySerializer(FlexFieldsModelSerializer):
-    """Serializer pour VesselFlagMmsiHistory avec support $expand"""
     class Meta:
         model = VesselFlagMmsiHistory
         fields = ALL_FIELDS
@@ -128,14 +116,12 @@ class VesselFlagMmsiHistorySerializer(FlexFieldsModelSerializer):
 
 
 class ProjectSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Project avec support $expand"""
     class Meta:
         model = Project
         fields = ALL_FIELDS
 
 
 class VesselProjectHistorySerializer(FlexFieldsModelSerializer):
-    """Serializer pour VesselProjectHistory avec support $expand"""
     class Meta:
         model = VesselProjectHistory
         fields = ALL_FIELDS

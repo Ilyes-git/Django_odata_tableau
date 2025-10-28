@@ -1,14 +1,14 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.db.models import Q
-from rest_framework import viewsets
 from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+
 from .models import Person, Car, Product
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 import re
 import operator
 import json
-from second_app.models import Author, Book
 
 
 def get_serializer_for_model(model_class):
@@ -208,7 +208,7 @@ class ODataFilterParser:
         return mapping.get(op, 'exact')
 
 
-class ODataModelViewSet(viewsets.ModelViewSet):
+class ODataModelViewSet(ModelViewSet):
     """ViewSet générique dynamique pour OData - s'adapte au registry"""
 
     # Seront définis dynamiquement

@@ -1,22 +1,22 @@
 from rest_flex_fields import FlexFieldsModelSerializer
+from rest_framework.serializers import ALL_FIELDS
+
 from .models import Author, Book
 
 
 class AuthorSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Author avec support $expand"""
     class Meta:
         model = Author
-        fields = ['id', 'name', 'email', 'created_at', 'books']
+        fields = ALL_FIELDS
         expandable_fields = {
             'books': ('second_app.serializers.BookSerializer', {'many': True})
         }
 
 
 class BookSerializer(FlexFieldsModelSerializer):
-    """Serializer pour Book avec support $expand"""
     class Meta:
         model = Book
-        fields = ['id', 'title', 'author', 'isbn', 'pages', 'published_date', 'rating']
+        fields = ALL_FIELDS
         expandable_fields = {
             'author': ('second_app.serializers.AuthorSerializer', {})
         }
