@@ -22,7 +22,7 @@ from xml.dom import minidom
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django.db import models as django_models
-from django.db.models.fields.related import ForeignKey, ManyToManyField, OneToOneField
+from django.db.models.fields.related import ForeignKey, ManyToManyField
 
 
 class ODataMetadataGenerator:

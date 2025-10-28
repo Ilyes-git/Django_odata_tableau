@@ -4,15 +4,13 @@ from django.db.models import Q
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.serializers import ALL_FIELDS
-from rest_flex_fields import FlexFieldsModelSerializer
 import importlib
 import re
 import operator
 import json
 
 from .models import Person, Car, Product
-from .serializers import generate_expandable_fields, generate_serializer
+from .serializers import generate_serializer
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 from second_app.models import Author, Book
 from vessel.models import (
