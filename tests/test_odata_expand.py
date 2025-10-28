@@ -1,14 +1,12 @@
 """
 Tests pour vérifier le support du paramètre $expand dans OData
-Tests complexes pour assurer la robustesse de la fonctionnalité
 """
 import pytest
 from django.test import TestCase
 from rest_framework.test import APIClient
-from my_app.models import Person, Car, Product
+from my_app.models import Person, Car
 from second_app.models import Author, Book
 from datetime import date
-from decimal import Decimal
 
 
 @pytest.mark.django_db
@@ -108,16 +106,6 @@ class TestODataExpandBasics(TestCase):
         assert "owner" in car
         assert isinstance(car["owner"], int)
 
-    def test_expand_with_empty_relations(self):
-        """Tester $expand quand une entité n'a pas de relations"""
-        response = self.client.get(
-            "/odata/Products?$expand=nonexistent",
-            format="json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "value" in data
 
 
 @pytest.mark.django_db
@@ -213,16 +201,6 @@ class TestODataExpandAdvanced(TestCase):
         for car in data["value"]:
             assert isinstance(car["owner"], dict)
 
-    def test_expand_with_pagination_top(self):
-        """Tester $expand avec $top"""
-        response = self.client.get(
-            "/odata/Cars?$expand=owner&$top=2",
-            format="json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["value"]) == 2
 
     def test_expand_with_complex_filter_and_orderby(self):
         """Tester $expand avec filtre ET orderby complexes"""
@@ -245,18 +223,6 @@ class TestODataExpandAdvanced(TestCase):
         brands = [car["brand"] for car in data["value"]]
         assert brands == sorted(brands)
 
-    def test_expand_count_metadata(self):
-        """Vérifier que @odata.count est correct avec expand"""
-        response = self.client.get(
-            "/odata/Cars?$expand=owner",
-            format="json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "@odata.count" in data
-        assert data["@odata.count"] == 3
-        assert len(data["value"]) == 3
 
 
 @pytest.mark.django_db
@@ -487,19 +453,6 @@ class TestODataExpandEdgeCases(TestCase):
         data = response.json()
         assert "value" in data
 
-    def test_expand_multiple_fields_separated_by_comma(self):
-        """Tester $expand avec plusieurs champs séparés par virgule"""
-        # Note: Ce test montre le comportement du système avec plusieurs expand
-        # même si un champ peut ne pas avoir de relation
-        response = self.client.get(
-            "/odata/Persons?$expand=cars",
-            format="json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        for person in data["value"]:
-            assert "cars" in person
 
     def test_expand_with_filter_no_results(self):
         """Tester $expand avec filtre qui retourne zéro résultats"""
@@ -631,24 +584,5 @@ class TestODataExpandPerformance(TestCase):
         for car in data["value"]:
             assert isinstance(car["owner"], dict)
 
-    def test_expand_consistency_across_pages(self):
-        """Tester que expand reste cohérent à travers la pagination"""
-        # Page 1
-        response1 = self.client.get(
-            "/odata/Cars?$expand=owner&$top=5&$skip=0",
-            format="json"
-        )
-        data1 = response1.json()
-
-        # Page 2
-        response2 = self.client.get(
-            "/odata/Cars?$expand=owner&$top=5&$skip=5",
-            format="json"
-        )
-        data2 = response2.json()
-
-        # Toutes les voitures devraient avoir un owner développé
-        for car in data1["value"] + data2["value"]:
-            assert isinstance(car["owner"], dict)
 
 

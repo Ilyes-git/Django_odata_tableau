@@ -4,38 +4,85 @@ from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.response import Response
 from .models import Person, Car, Product
-from .serializers import PersonSerializer, CarSerializer, ProductSerializer
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 import re
 import operator
 import json
 from second_app.models import Author, Book
-from second_app.serializers import AuthorSerializer, BookSerializer
 
 
+def get_serializer_for_model(model_class):
+    """
+    Récupère le serializer pour un modèle donné en suivant la convention:
+    ModelNameSerializer
 
-ODATA_MODELS_REGISTRY = {
-    'Persons': {
-        'model': Person,
-        'serializer': PersonSerializer,
-    },
-    'Cars': {
-        'model': Car,
-        'serializer': CarSerializer,
-    },
-    'Products': {
-        'model': Product,
-        'serializer': ProductSerializer,
-    },
-    'Authors': {
-        'model': Author,
-        'serializer': AuthorSerializer,
-    },
-    'Books': {
-        'model': Book,
-        'serializer': BookSerializer,
+    Args:
+        model_class: La classe du modèle Django
+
+    Returns:
+        La classe du serializer correspondant
+
+    Raises:
+        ValueError: Si le serializer n'est pas trouvé
+    """
+    serializer_name = f"{model_class.__name__}Serializer"
+
+    # Chercher dans les modules de serializers
+    import my_app.serializers
+    import second_app.serializers
+    import vessel.serializers
+
+    for module in [my_app.serializers, second_app.serializers, vessel.serializers]:
+        if hasattr(module, serializer_name):
+            return getattr(module, serializer_name)
+
+    raise ValueError(f"Serializer '{serializer_name}' non trouvé pour le modèle '{model_class.__name__}'")
+
+
+def _build_odata_registry():
+    """Construire le registry OData en chargeant les modèles dynamiquement"""
+    from second_app.models import Author, Book
+    from vessel.models import (
+        ShipClass,
+        Port,
+        Organisation,
+        Role,
+        Purpose,
+        Task,
+        Vessel,
+        VesselQualification,
+        VesselPurpose,
+        OperationalParameter,
+        VesselStakeholder,
+        VesselFlagMmsiHistory,
+        Project,
+        VesselProjectHistory,
+    )
+
+    return {
+        'Persons': {'model': Person},
+        'Cars': {'model': Car},
+        'Products': {'model': Product},
+        'Authors': {'model': Author},
+        'Books': {'model': Book},
+        'ShipClasses': {'model': ShipClass},
+        'Ports': {'model': Port},
+        'Organisations': {'model': Organisation},
+        'Roles': {'model': Role},
+        'Purposes': {'model': Purpose},
+        'Tasks': {'model': Task},
+        'Vessels': {'model': Vessel},
+        'VesselQualifications': {'model': VesselQualification},
+        'VesselPurposes': {'model': VesselPurpose},
+        'OperationalParameters': {'model': OperationalParameter},
+        'VesselStakeholders': {'model': VesselStakeholder},
+        'VesselFlagMmsiHistories': {'model': VesselFlagMmsiHistory},
+        'Projects': {'model': Project},
+        'VesselProjectHistories': {'model': VesselProjectHistory},
     }
-}
+
+
+ODATA_MODELS_REGISTRY = _build_odata_registry()
 
 
 
@@ -250,10 +297,10 @@ class ODataModelViewSet(viewsets.ModelViewSet):
         return context
 
     def get_serializer_class(self):
-        """Récupère le serializer depuis le registry"""
+        """Récupère le serializer depuis le registry en utilisant la convention de nommage"""
         entry = self.get_registry_entry()
         if entry:
-            return entry['serializer']
+            return get_serializer_for_model(entry['model'])
         return self.serializer_class
 
     def apply_odata_params(self, queryset):

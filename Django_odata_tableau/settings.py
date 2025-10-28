@@ -7,6 +7,7 @@ DEBUG = True
 INSTALLED_APPS = [
     "my_app",
     "second_app",
+    "vessel",
     "rest_framework",
     "django_odata",
     "rest_flex_fields",

@@ -208,6 +208,9 @@ class ODataMetadataGenerator:
             entity = self.entity_types[model_name]
             self._add_entity_type(schema, model_name, entity)
 
+        # Ajouter les associations
+        self._add_associations(schema)
+
         # Ajouter le conteneur de service
         self._add_entity_container(schema)
 
@@ -281,28 +284,99 @@ class ODataMetadataGenerator:
 
         # Ajouter les propriétés de navigation
         for rel in entity['relationships']:
-            ET.SubElement(
-                entity_type,
-                'NavigationProperty',
-                {
-                    'Name': rel['name'],
-                    'Type': f"{self.namespace}.{rel['type']}",
-                }
-            )
+            nav_attrs = {
+                'Name': rel['name'],
+                'Type': f"{self.namespace}.{rel['type']}",
+                'Relationship': f"{self.namespace}.{model_name}_{rel['type']}_{rel['name']}"
+            }
+            ET.SubElement(entity_type, 'NavigationProperty', nav_attrs)
+
+    def _add_associations(self, parent_element):
+        """Ajouter les associations au schéma."""
+        # Garder trace des associations déjà ajoutées
+        added_associations = set()
+
+        for model_name, entity in self.entity_types.items():
+            for rel in entity['relationships']:
+                related_model = rel['type']
+                prop_name = rel['name']
+
+                # Créer un ID unique pour l'association
+                assoc_id = f"{model_name}_{related_model}_{prop_name}"
+
+                if assoc_id not in added_associations:
+                    # Créer l'association
+                    association = ET.SubElement(
+                        parent_element,
+                        'Association',
+                        {
+                            'Name': assoc_id
+                        }
+                    )
+
+                    # End 1: le modèle avec la FK
+                    ET.SubElement(
+                        association,
+                        'End',
+                        {
+                            'Type': f"{self.namespace}.{model_name}",
+                            'Multiplicity': '1',
+                            'Role': f"{model_name}_Role"
+                        }
+                    )
+
+                    # End 2: le modèle référencé
+                    ET.SubElement(
+                        association,
+                        'End',
+                        {
+                            'Type': f"{self.namespace}.{related_model}",
+                            'Multiplicity': '0..1',
+                            'Role': f"{related_model}_Role"
+                        }
+                    )
+
+                    # ReferentialConstraint
+                    ref_constraint = ET.SubElement(association, 'ReferentialConstraint')
+                    ET.SubElement(
+                        ref_constraint,
+                        'Principal',
+                        {'Role': f"{related_model}_Role"}
+                    )
+                    ET.SubElement(
+                        ref_constraint,
+                        'Dependent',
+                        {'Role': f"{model_name}_Role", 'Property': f"{prop_name}_id"}
+                    )
+
+                    added_associations.add(assoc_id)
 
     def _add_entity_container(self, parent_element):
         """Ajouter le conteneur de service."""
+        from my_app.views import ODATA_MODELS_REGISTRY
+
         container = ET.SubElement(
             parent_element,
             'EntityContainer',
             {'Name': self.service_name}
         )
 
+        # Créer un mapping modèle -> entity_set_name depuis le registry
+        model_to_entity_set = {}
+        for entity_set_name, entry in ODATA_MODELS_REGISTRY.items():
+            model_name = entry['model'].__name__
+            model_to_entity_set[model_name] = entity_set_name
+
         # Ajouter les jeux d'entités
         for model_name in sorted(self.models.keys()):
-            # Pluralisation simple
-            entity_set_name = f"{model_name}s"
-            ET.SubElement(
+            # Utiliser le registry pour obtenir le nom d'entity set correct
+            if model_name in model_to_entity_set:
+                entity_set_name = model_to_entity_set[model_name]
+            else:
+                # Fallback: pluralisation simple
+                entity_set_name = f"{model_name}s"
+
+            entity_set = ET.SubElement(
                 container,
                 'EntitySet',
                 {
@@ -310,6 +384,28 @@ class ODataMetadataGenerator:
                     'EntityType': f"{self.namespace}.{model_name}"
                 }
             )
+
+            # Ajouter les navigation property bindings
+            entity = self.entity_types.get(model_name)
+            if entity:
+                for rel in entity['relationships']:
+                    related_model = rel['type']
+                    prop_name = rel['name']
+
+                    # Obtenir le nom du related entity set
+                    related_entity_set = model_to_entity_set.get(related_model)
+                    if not related_entity_set:
+                        related_entity_set = f"{related_model}s"
+
+                    # Ajouter le binding
+                    ET.SubElement(
+                        entity_set,
+                        'NavigationPropertyBinding',
+                        {
+                            'Path': prop_name,
+                            'Target': related_entity_set
+                        }
+                    )
 
     def _prettify_xml(self, elem) -> str:
         """Formater le XML pour le rendre lisible."""

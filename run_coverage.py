@@ -30,6 +30,8 @@ def run_tests_with_coverage():
         "python", "-m", "pytest",
         "tests/",
         "--cov=my_app",
+        "--cov=second_app",
+        "--cov=vessel",
         "--cov-report=term-missing",
         "--cov-report=html",
         "--cov-report=json:.coverage.json",
