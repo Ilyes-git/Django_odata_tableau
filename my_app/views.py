@@ -30,25 +30,7 @@ from vessel.models import (
     VesselProjectHistory,
 )
 
-def _build_odata_registry() -> Dict[str, Type[Model]]:
-    """
-    Construire le registry OData en chargeant les modèles dynamiquement.
-
-    Registry : Dictionnaire mappant les noms des entity sets OData aux classes modèles Django.
-    Format : {
-        'EntitySetName' : ModelClass,
-        'Persons' : Person,
-        'Cars' : Car…,
-
-        }
-
-    Returns :
-
-        Dict[str, Type[Model]] : Dictionnaire des entity sets OData avec leurs modèles associés
-    """
-
-
-    return {
+ODATA_MODELS_REGISTRY = {
         'Persons': Person,
         'Cars': Car,
         'Products': Product,
@@ -69,10 +51,6 @@ def _build_odata_registry() -> Dict[str, Type[Model]]:
         'Projects': Project,
         'VesselProjectHistories': VesselProjectHistory,
     }
-
-
-ODATA_MODELS_REGISTRY = _build_odata_registry()
-
 
 
 class ODataFilterParser:
