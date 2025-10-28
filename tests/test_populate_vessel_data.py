@@ -1,5 +1,4 @@
 import pytest
-from datetime import date, timedelta
 from django.core.management import call_command
 from io import StringIO
 from vessel.models import (
