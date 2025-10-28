@@ -9,7 +9,3 @@ class ForceJSONMiddleware(MiddlewareMixin):
             response["OData-Version"] = "4.0"
 
         return response
-
-
-
-

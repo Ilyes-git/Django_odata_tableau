@@ -1,0 +1,446 @@
+<?xml version="1.0" ?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="Odata">
+      <EntityType Name="Author">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="100"/>
+        <Property Name="email" Type="Edm.String" Nullable="false" MaxLength="254"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="Book">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="title" Type="Edm.String" Nullable="false" MaxLength="200"/>
+        <Property Name="author_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="isbn" Type="Edm.String" Nullable="false" MaxLength="13"/>
+        <Property Name="pages" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="published_date" Type="Edm.Date" Nullable="false"/>
+        <Property Name="rating" Type="Edm.Decimal" Nullable="false"/>
+        <NavigationProperty Name="author" Type="Odata.Author" Relationship="Odata.Book_Author_author"/>
+      </EntityType>
+      <EntityType Name="Car">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="brand" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="model" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="year" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="owner_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="owner" Type="Odata.Person" Relationship="Odata.Car_Person_owner"/>
+      </EntityType>
+      <EntityType Name="LogEntry">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="action_time" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="object_id" Type="Edm.String" Nullable="true"/>
+        <Property Name="object_repr" Type="Edm.String" Nullable="false" MaxLength="200"/>
+        <Property Name="action_flag" Type="Edm.Int16" Nullable="false"/>
+        <Property Name="change_message" Type="Edm.String" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="OperationalParameter">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="timewindow_h" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="max_wind_speed_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="max_wave_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="max_current_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="standard_consumption" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="theoretical_speed_kn" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="applicable_speed_kn" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="ship_class_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="purpose_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="task_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="ship_class" Type="Odata.ShipClass" Relationship="Odata.OperationalParameter_ShipClass_ship_class"/>
+        <NavigationProperty Name="purpose" Type="Odata.Purpose" Relationship="Odata.OperationalParameter_Purpose_purpose"/>
+        <NavigationProperty Name="task" Type="Odata.Task" Relationship="Odata.OperationalParameter_Task_task"/>
+      </EntityType>
+      <EntityType Name="Organisation">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false"/>
+        <Property Name="acronym" Type="Edm.String" Nullable="true" MaxLength="30"/>
+        <Property Name="address" Type="Edm.String" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Person">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="first_name" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="last_name" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="birth_date" Type="Edm.Date" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Port">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="wpi_number" Type="Edm.String" Nullable="true" MaxLength="10"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="40"/>
+        <Property Name="un_locode" Type="Edm.String" Nullable="true" MaxLength="10"/>
+        <Property Name="world_water_body" Type="Edm.String" Nullable="true"/>
+        <Property Name="tidal_range_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="entrance_width_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="anchorage_depth_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="oil_terminal_depth_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="maximum_vessel_length_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="maximum_vessel_draft_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="supplies_potable_water" Type="Edm.Boolean" Nullable="true"/>
+        <Property Name="supplies_fuel_oil" Type="Edm.Boolean" Nullable="true"/>
+        <Property Name="dry_dock" Type="Edm.String" Nullable="true" MaxLength="15"/>
+        <Property Name="latitude" Type="Edm.Double" Nullable="true"/>
+        <Property Name="longitude" Type="Edm.Double" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Product">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="price" Type="Edm.Decimal" Nullable="false"/>
+        <Property Name="quantity" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="category" Type="Edm.String" Nullable="false" MaxLength="100"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="Project">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="code" Type="Edm.String" Nullable="false" MaxLength="5"/>
+        <Property Name="name" Type="Edm.String" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Purpose">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="20"/>
+        <Property Name="description" Type="Edm.String" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Role">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="10"/>
+      </EntityType>
+      <EntityType Name="Session">
+        <Key>
+          <PropertyRef Name="session_key"/>
+        </Key>
+        <Property Name="session_key" Type="Edm.String" Nullable="false"/>
+        <Property Name="session_data" Type="Edm.String" Nullable="false"/>
+        <Property Name="expire_date" Type="Edm.DateTimeOffset" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="ShipClass">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="25"/>
+        <Property Name="transit_speed_kn" Type="Edm.Double" Nullable="false"/>
+        <Property Name="draught_m" Type="Edm.Double" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="Task">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="acronym" Type="Edm.String" Nullable="false" MaxLength="10"/>
+        <Property Name="full_name" Type="Edm.String" Nullable="true" MaxLength="30"/>
+        <Property Name="description" Type="Edm.String" Nullable="true"/>
+      </EntityType>
+      <EntityType Name="Vessel">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="imo" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="name" Type="Edm.String" Nullable="true"/>
+        <Property Name="acronym" Type="Edm.String" Nullable="true" MaxLength="20"/>
+        <Property Name="main_lay" Type="Edm.Boolean" Nullable="true"/>
+        <Property Name="dynamic_positioning" Type="Edm.String" Nullable="true" MaxLength="20"/>
+        <Property Name="year_built" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="length_overall_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="width_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="draught_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="gross_tonnage_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="deadweight_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="max_speed_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="transit_speed_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="fuel_capacity_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="fuel_safety_level_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="ship_class_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="port_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="ship_class" Type="Odata.ShipClass" Relationship="Odata.Vessel_ShipClass_ship_class"/>
+        <NavigationProperty Name="port" Type="Odata.Port" Relationship="Odata.Vessel_Port_port"/>
+      </EntityType>
+      <EntityType Name="VesselFlagMmsiHistory">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="flag_start_date" Type="Edm.Date" Nullable="true"/>
+        <Property Name="flag_end_date" Type="Edm.Date" Nullable="true"/>
+        <Property Name="mmsi" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="vessel_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Relationship="Odata.VesselFlagMmsiHistory_Vessel_vessel"/>
+      </EntityType>
+      <EntityType Name="VesselProjectHistory">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="rating" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="comment" Type="Edm.String" Nullable="true"/>
+        <Property Name="project_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="vessel_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="task_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="project" Type="Odata.Project" Relationship="Odata.VesselProjectHistory_Project_project"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Relationship="Odata.VesselProjectHistory_Vessel_vessel"/>
+        <NavigationProperty Name="task" Type="Odata.Task" Relationship="Odata.VesselProjectHistory_Task_task"/>
+      </EntityType>
+      <EntityType Name="VesselPurpose">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="primary_purpose" Type="Edm.Boolean" Nullable="false"/>
+        <Property Name="vessel_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="purpose_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Relationship="Odata.VesselPurpose_Vessel_vessel"/>
+        <NavigationProperty Name="purpose" Type="Odata.Purpose" Relationship="Odata.VesselPurpose_Purpose_purpose"/>
+      </EntityType>
+      <EntityType Name="VesselQualification">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="vessel_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="task_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Relationship="Odata.VesselQualification_Vessel_vessel"/>
+        <NavigationProperty Name="task" Type="Odata.Task" Relationship="Odata.VesselQualification_Task_task"/>
+      </EntityType>
+      <EntityType Name="VesselStakeholder">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="organisation_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="role_id" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="vessel_id" Type="Edm.Int32" Nullable="true"/>
+        <NavigationProperty Name="organisation" Type="Odata.Organisation" Relationship="Odata.VesselStakeholder_Organisation_organisation"/>
+        <NavigationProperty Name="role" Type="Odata.Role" Relationship="Odata.VesselStakeholder_Role_role"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Relationship="Odata.VesselStakeholder_Vessel_vessel"/>
+      </EntityType>
+      <Association Name="Car_Person_owner">
+        <End Type="Odata.Car" Multiplicity="1" Role="Car_Role"/>
+        <End Type="Odata.Person" Multiplicity="0..1" Role="Person_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Person_Role"/>
+          <Dependent Role="Car_Role" Property="owner_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="Book_Author_author">
+        <End Type="Odata.Book" Multiplicity="1" Role="Book_Role"/>
+        <End Type="Odata.Author" Multiplicity="0..1" Role="Author_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Author_Role"/>
+          <Dependent Role="Book_Role" Property="author_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="Vessel_ShipClass_ship_class">
+        <End Type="Odata.Vessel" Multiplicity="1" Role="Vessel_Role"/>
+        <End Type="Odata.ShipClass" Multiplicity="0..1" Role="ShipClass_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="ShipClass_Role"/>
+          <Dependent Role="Vessel_Role" Property="ship_class_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="Vessel_Port_port">
+        <End Type="Odata.Vessel" Multiplicity="1" Role="Vessel_Role"/>
+        <End Type="Odata.Port" Multiplicity="0..1" Role="Port_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Port_Role"/>
+          <Dependent Role="Vessel_Role" Property="port_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselQualification_Vessel_vessel">
+        <End Type="Odata.VesselQualification" Multiplicity="1" Role="VesselQualification_Role"/>
+        <End Type="Odata.Vessel" Multiplicity="0..1" Role="Vessel_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Vessel_Role"/>
+          <Dependent Role="VesselQualification_Role" Property="vessel_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselQualification_Task_task">
+        <End Type="Odata.VesselQualification" Multiplicity="1" Role="VesselQualification_Role"/>
+        <End Type="Odata.Task" Multiplicity="0..1" Role="Task_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Task_Role"/>
+          <Dependent Role="VesselQualification_Role" Property="task_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselPurpose_Vessel_vessel">
+        <End Type="Odata.VesselPurpose" Multiplicity="1" Role="VesselPurpose_Role"/>
+        <End Type="Odata.Vessel" Multiplicity="0..1" Role="Vessel_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Vessel_Role"/>
+          <Dependent Role="VesselPurpose_Role" Property="vessel_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselPurpose_Purpose_purpose">
+        <End Type="Odata.VesselPurpose" Multiplicity="1" Role="VesselPurpose_Role"/>
+        <End Type="Odata.Purpose" Multiplicity="0..1" Role="Purpose_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Purpose_Role"/>
+          <Dependent Role="VesselPurpose_Role" Property="purpose_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="OperationalParameter_ShipClass_ship_class">
+        <End Type="Odata.OperationalParameter" Multiplicity="1" Role="OperationalParameter_Role"/>
+        <End Type="Odata.ShipClass" Multiplicity="0..1" Role="ShipClass_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="ShipClass_Role"/>
+          <Dependent Role="OperationalParameter_Role" Property="ship_class_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="OperationalParameter_Purpose_purpose">
+        <End Type="Odata.OperationalParameter" Multiplicity="1" Role="OperationalParameter_Role"/>
+        <End Type="Odata.Purpose" Multiplicity="0..1" Role="Purpose_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Purpose_Role"/>
+          <Dependent Role="OperationalParameter_Role" Property="purpose_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="OperationalParameter_Task_task">
+        <End Type="Odata.OperationalParameter" Multiplicity="1" Role="OperationalParameter_Role"/>
+        <End Type="Odata.Task" Multiplicity="0..1" Role="Task_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Task_Role"/>
+          <Dependent Role="OperationalParameter_Role" Property="task_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselStakeholder_Organisation_organisation">
+        <End Type="Odata.VesselStakeholder" Multiplicity="1" Role="VesselStakeholder_Role"/>
+        <End Type="Odata.Organisation" Multiplicity="0..1" Role="Organisation_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Organisation_Role"/>
+          <Dependent Role="VesselStakeholder_Role" Property="organisation_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselStakeholder_Role_role">
+        <End Type="Odata.VesselStakeholder" Multiplicity="1" Role="VesselStakeholder_Role"/>
+        <End Type="Odata.Role" Multiplicity="0..1" Role="Role_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Role_Role"/>
+          <Dependent Role="VesselStakeholder_Role" Property="role_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselStakeholder_Vessel_vessel">
+        <End Type="Odata.VesselStakeholder" Multiplicity="1" Role="VesselStakeholder_Role"/>
+        <End Type="Odata.Vessel" Multiplicity="0..1" Role="Vessel_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Vessel_Role"/>
+          <Dependent Role="VesselStakeholder_Role" Property="vessel_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselFlagMmsiHistory_Vessel_vessel">
+        <End Type="Odata.VesselFlagMmsiHistory" Multiplicity="1" Role="VesselFlagMmsiHistory_Role"/>
+        <End Type="Odata.Vessel" Multiplicity="0..1" Role="Vessel_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Vessel_Role"/>
+          <Dependent Role="VesselFlagMmsiHistory_Role" Property="vessel_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselProjectHistory_Project_project">
+        <End Type="Odata.VesselProjectHistory" Multiplicity="1" Role="VesselProjectHistory_Role"/>
+        <End Type="Odata.Project" Multiplicity="0..1" Role="Project_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Project_Role"/>
+          <Dependent Role="VesselProjectHistory_Role" Property="project_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselProjectHistory_Vessel_vessel">
+        <End Type="Odata.VesselProjectHistory" Multiplicity="1" Role="VesselProjectHistory_Role"/>
+        <End Type="Odata.Vessel" Multiplicity="0..1" Role="Vessel_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Vessel_Role"/>
+          <Dependent Role="VesselProjectHistory_Role" Property="vessel_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <Association Name="VesselProjectHistory_Task_task">
+        <End Type="Odata.VesselProjectHistory" Multiplicity="1" Role="VesselProjectHistory_Role"/>
+        <End Type="Odata.Task" Multiplicity="0..1" Role="Task_Role"/>
+        <ReferentialConstraint>
+          <Principal Role="Task_Role"/>
+          <Dependent Role="VesselProjectHistory_Role" Property="task_id"/>
+        </ReferentialConstraint>
+      </Association>
+      <EntityContainer Name="Container">
+        <EntitySet Name="Authors" EntityType="Odata.Author"/>
+        <EntitySet Name="Books" EntityType="Odata.Book">
+          <NavigationPropertyBinding Path="author" Target="Authors"/>
+        </EntitySet>
+        <EntitySet Name="Cars" EntityType="Odata.Car">
+          <NavigationPropertyBinding Path="owner" Target="Persons"/>
+        </EntitySet>
+        <EntitySet Name="LogEntrys" EntityType="Odata.LogEntry"/>
+        <EntitySet Name="OperationalParameters" EntityType="Odata.OperationalParameter">
+          <NavigationPropertyBinding Path="ship_class" Target="ShipClasses"/>
+          <NavigationPropertyBinding Path="purpose" Target="Purposes"/>
+          <NavigationPropertyBinding Path="task" Target="Tasks"/>
+        </EntitySet>
+        <EntitySet Name="Organisations" EntityType="Odata.Organisation"/>
+        <EntitySet Name="Persons" EntityType="Odata.Person"/>
+        <EntitySet Name="Ports" EntityType="Odata.Port"/>
+        <EntitySet Name="Products" EntityType="Odata.Product"/>
+        <EntitySet Name="Projects" EntityType="Odata.Project"/>
+        <EntitySet Name="Purposes" EntityType="Odata.Purpose"/>
+        <EntitySet Name="Roles" EntityType="Odata.Role"/>
+        <EntitySet Name="Sessions" EntityType="Odata.Session"/>
+        <EntitySet Name="ShipClasses" EntityType="Odata.ShipClass"/>
+        <EntitySet Name="Tasks" EntityType="Odata.Task"/>
+        <EntitySet Name="Vessels" EntityType="Odata.Vessel">
+          <NavigationPropertyBinding Path="ship_class" Target="ShipClasses"/>
+          <NavigationPropertyBinding Path="port" Target="Ports"/>
+        </EntitySet>
+        <EntitySet Name="VesselFlagMmsiHistories" EntityType="Odata.VesselFlagMmsiHistory">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+        </EntitySet>
+        <EntitySet Name="VesselProjectHistories" EntityType="Odata.VesselProjectHistory">
+          <NavigationPropertyBinding Path="project" Target="Projects"/>
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="task" Target="Tasks"/>
+        </EntitySet>
+        <EntitySet Name="VesselPurposes" EntityType="Odata.VesselPurpose">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="purpose" Target="Purposes"/>
+        </EntitySet>
+        <EntitySet Name="VesselQualifications" EntityType="Odata.VesselQualification">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="task" Target="Tasks"/>
+        </EntitySet>
+        <EntitySet Name="VesselStakeholders" EntityType="Odata.VesselStakeholder">
+          <NavigationPropertyBinding Path="organisation" Target="Organisations"/>
+          <NavigationPropertyBinding Path="role" Target="Roles"/>
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+        </EntitySet>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

@@ -364,7 +364,7 @@ class ODataMetadataGenerator:
         # Créer un mapping modèle -> entity_set_name depuis le registry
         model_to_entity_set = {}
         for entity_set_name, entry in ODATA_MODELS_REGISTRY.items():
-            model_name = entry['model'].__name__
+            model_name = entry.__name__
             model_to_entity_set[model_name] = entity_set_name
 
         # Ajouter les jeux d'entités

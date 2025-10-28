@@ -1,15 +1,32 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
-from django.db.models import Q
+from django.db.models import Q, Model
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from typing import Dict, Type
 
 from .models import Person, Car, Product
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 import re
 import operator
 import json
-
+from second_app.models import Author, Book
+from vessel.models import (
+    ShipClass,
+    Port,
+    Organisation,
+    Role,
+    Purpose,
+    Task,
+    Vessel,
+    VesselQualification,
+    VesselPurpose,
+    OperationalParameter,
+    VesselStakeholder,
+    VesselFlagMmsiHistory,
+    Project,
+    VesselProjectHistory,
+)
 
 def get_serializer_for_model(model_class):
     """
@@ -39,46 +56,42 @@ def get_serializer_for_model(model_class):
     raise ValueError(f"Serializer '{serializer_name}' non trouvé pour le modèle '{model_class.__name__}'")
 
 
-def _build_odata_registry():
-    """Construire le registry OData en chargeant les modèles dynamiquement"""
-    from second_app.models import Author, Book
-    from vessel.models import (
-        ShipClass,
-        Port,
-        Organisation,
-        Role,
-        Purpose,
-        Task,
-        Vessel,
-        VesselQualification,
-        VesselPurpose,
-        OperationalParameter,
-        VesselStakeholder,
-        VesselFlagMmsiHistory,
-        Project,
-        VesselProjectHistory,
-    )
+def _build_odata_registry() -> Dict[str, Type[Model]]:
+    """
+    Construire le registry OData en chargeant les modèles dynamiquement.
+
+    Registry : Dictionnaire mappant les noms des entity sets OData aux classes modèles Django.
+    Format : {
+        'EntitySetName' : ModelClass,
+        'Persons' : Person,
+        'Cars' : Car…, }
+
+    Returns :
+
+        Dict[str, Type[Model]] : Dictionnaire des entity sets OData avec leurs modèles associés
+    """
+
 
     return {
-        'Persons': {'model': Person},
-        'Cars': {'model': Car},
-        'Products': {'model': Product},
-        'Authors': {'model': Author},
-        'Books': {'model': Book},
-        'ShipClasses': {'model': ShipClass},
-        'Ports': {'model': Port},
-        'Organisations': {'model': Organisation},
-        'Roles': {'model': Role},
-        'Purposes': {'model': Purpose},
-        'Tasks': {'model': Task},
-        'Vessels': {'model': Vessel},
-        'VesselQualifications': {'model': VesselQualification},
-        'VesselPurposes': {'model': VesselPurpose},
-        'OperationalParameters': {'model': OperationalParameter},
-        'VesselStakeholders': {'model': VesselStakeholder},
-        'VesselFlagMmsiHistories': {'model': VesselFlagMmsiHistory},
-        'Projects': {'model': Project},
-        'VesselProjectHistories': {'model': VesselProjectHistory},
+        'Persons': Person,
+        'Cars': Car,
+        'Products': Product,
+        'Authors': Author,
+        'Books': Book,
+        'ShipClasses': ShipClass,
+        'Ports': Port,
+        'Organisations': Organisation,
+        'Roles': Role,
+        'Purposes': Purpose,
+        'Tasks': Task,
+        'Vessels': Vessel,
+        'VesselQualifications': VesselQualification,
+        'VesselPurposes': VesselPurpose,
+        'OperationalParameters': OperationalParameter,
+        'VesselStakeholders': VesselStakeholder,
+        'VesselFlagMmsiHistories': VesselFlagMmsiHistory,
+        'Projects': Project,
+        'VesselProjectHistories': VesselProjectHistory,
     }
 
 
@@ -229,9 +242,9 @@ class ODataModelViewSet(ModelViewSet):
         """Retourner le queryset avec les paramètres OData appliqués"""
         entry = self.get_registry_entry()
         if not entry:
-            return entry['model'].objects.none()
+            return entry.objects.none()
 
-        queryset = entry['model'].objects.all()
+        queryset = entry.objects.all()
 
         # Appliquer les paramètres OData
         try:
@@ -300,7 +313,7 @@ class ODataModelViewSet(ModelViewSet):
         """Récupère le serializer depuis le registry en utilisant la convention de nommage"""
         entry = self.get_registry_entry()
         if entry:
-            return get_serializer_for_model(entry['model'])
+            return get_serializer_for_model(entry)
         return self.serializer_class
 
     def apply_odata_params(self, queryset):
@@ -309,7 +322,7 @@ class ODataModelViewSet(ModelViewSet):
         if not entry:
             raise ValueError(f"Entity set '{self.entity_set_name}' non enregistré")
 
-        model = entry['model']
+        model = entry
 
         # $filter
         filter_param = self.request.GET.get("$filter", "")
@@ -381,7 +394,7 @@ class ODataModelViewSet(ModelViewSet):
 
             # Ajouter métadonnées OData
             entry = self.get_registry_entry()
-            odata_type = f"#Odata.{entry['model'].__name__}" if entry else None
+            odata_type = f"#Odata.{entry.__name__}" if entry else None
             for item in data:
                 if isinstance(item, dict) and odata_type:
                     item["@odata.type"] = odata_type
@@ -411,7 +424,7 @@ class ODataModelViewSet(ModelViewSet):
             # Ajouter métadonnées OData
             entry = self.get_registry_entry()
             if isinstance(data, dict):
-                data["@odata.type"] = f"#Odata.{entry['model'].__name__}" if entry else None
+                data["@odata.type"] = f"#Odata.{entry.__name__}" if entry else None
                 base_url = request.build_absolute_uri("/odata")
                 data["@odata.context"] = f"{base_url}/$metadata#{self.entity_set_name}('{kwargs.get('pk')}')"
 
