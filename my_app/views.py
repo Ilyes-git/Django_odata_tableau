@@ -34,7 +34,7 @@ def get_serializer_for_model(model_class):
     ModelNameSerializer
 
     Args:
-        model_class: La classe du modèle Django
+        model_class : La classe du modèle Django
 
     Returns:
         La classe du serializer correspondant
@@ -64,7 +64,9 @@ def _build_odata_registry() -> Dict[str, Type[Model]]:
     Format : {
         'EntitySetName' : ModelClass,
         'Persons' : Person,
-        'Cars' : Car…, }
+        'Cars' : Car…,
+
+        }
 
     Returns :
 
@@ -349,7 +351,6 @@ class ODataModelViewSet(ModelViewSet):
                 queryset = queryset.order_by(*order_fields)
 
         return queryset
-
 
     def paginate_queryset(self, queryset):
         """Gère la pagination avec $skip et $top"""
