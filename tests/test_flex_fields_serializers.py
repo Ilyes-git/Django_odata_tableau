@@ -2,13 +2,25 @@ import pytest
 from rest_framework.test import APIRequestFactory
 from rest_framework.request import Request as DRFRequest
 from my_app.models import Person, Car
-from my_app.serializers import CarSerializer, PersonSerializer
+from my_app.serializers import generate_serializer
 
 
 @pytest.fixture
 def api_factory():
     """Fixture pour APIRequestFactory"""
     return APIRequestFactory()
+
+
+@pytest.fixture
+def car_serializer():
+    """Fixture pour CarSerializer généré dynamiquement"""
+    return generate_serializer(Car)
+
+
+@pytest.fixture
+def person_serializer():
+    """Fixture pour PersonSerializer généré dynamiquement"""
+    return generate_serializer(Person)
 
 
 @pytest.fixture
@@ -22,14 +34,14 @@ def test_data(db):
 class TestCarSerializerFlexFields:
     """Tests pour CarSerializer avec flex fields"""
 
-    def test_car_serializer_sans_expand(self, api_factory, test_data):
+    def test_car_serializer_sans_expand(self, api_factory, test_data, car_serializer):
         """Test CarSerializer sans expand"""
         car = test_data["car"]
         request = api_factory.get('/')
         drf_request = DRFRequest(request)
         context = {'request': drf_request}
 
-        serializer = CarSerializer(car, context=context)
+        serializer = car_serializer(car, context=context)
         data = serializer.data
 
         # Vérifier que les champs de base sont présents
@@ -40,14 +52,14 @@ class TestCarSerializerFlexFields:
         # Sans expand, owner devrait être un ID
         assert data['owner'] == car.owner.id
 
-    def test_car_serializer_avec_expand_owner(self, api_factory, test_data):
+    def test_car_serializer_avec_expand_owner(self, api_factory, test_data, car_serializer):
         """Test CarSerializer avec expand=owner"""
         car = test_data["car"]
         request = api_factory.get('/', {'expand': 'owner'})
         drf_request = DRFRequest(request)
         context = {'request': drf_request}
 
-        serializer = CarSerializer(car, context=context)
+        serializer = car_serializer(car, context=context)
         data = serializer.data
 
         # Vérifier que les champs de base sont présents
@@ -59,14 +71,14 @@ class TestCarSerializerFlexFields:
         assert data['owner']['first_name'] == 'Test'
         assert data['owner']['last_name'] == 'Person'
 
-    def test_person_serializer_avec_expand_cars(self, api_factory, test_data):
+    def test_person_serializer_avec_expand_cars(self, api_factory, test_data, person_serializer):
         """Test PersonSerializer avec expand=cars"""
         person = test_data["person"]
         request = api_factory.get('/', {'expand': 'cars'})
         drf_request = DRFRequest(request)
         context = {'request': drf_request}
 
-        serializer = PersonSerializer(person, context=context)
+        serializer = person_serializer(person, context=context)
         data = serializer.data
 
         # Vérifier que les champs de base sont présents

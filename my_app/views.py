@@ -12,6 +12,7 @@ import operator
 import json
 
 from .models import Person, Car, Product
+from .serializers import generate_expandable_fields, generate_serializer
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 from second_app.models import Author, Book
 from vessel.models import (
@@ -280,9 +281,8 @@ class ODataModelViewSet(ModelViewSet):
                 if hasattr(module, serializer_name):
                     return getattr(module, serializer_name)
             # Si le serializer n'est pas trouvé, le créer dynamiquement
-            serializer_class = type(serializer_name, (FlexFieldsModelSerializer,), {
-                'Meta': type('Meta', (), {'model': entry, 'fields': ALL_FIELDS})
-            })
+            # avec les expandable_fields générés automatiquement
+            serializer_class = generate_serializer(entry)
             return serializer_class
         return self.serializer_class
 
