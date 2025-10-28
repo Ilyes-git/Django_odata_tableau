@@ -1,15 +1,17 @@
 from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.db.models import Q, Model
+from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from typing import Dict, Type
-
-from .models import Person, Car, Product
-from .management.commands.generate_odata_metadata import ODataMetadataGenerator
+import importlib
 import re
 import operator
 import json
+
+from .models import Person, Car, Product
+from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 from second_app.models import Author, Book
 from vessel.models import (
     ShipClass,
@@ -27,34 +29,6 @@ from vessel.models import (
     Project,
     VesselProjectHistory,
 )
-
-def get_serializer_for_model(model_class):
-    """
-    Récupère le serializer pour un modèle donné en suivant la convention:
-    ModelNameSerializer
-
-    Args:
-        model_class : La classe du modèle Django
-
-    Returns:
-        La classe du serializer correspondant
-
-    Raises:
-        ValueError: Si le serializer n'est pas trouvé
-    """
-    serializer_name = f"{model_class.__name__}Serializer"
-
-    # Chercher dans les modules de serializers
-    import my_app.serializers
-    import second_app.serializers
-    import vessel.serializers
-
-    for module in [my_app.serializers, second_app.serializers, vessel.serializers]:
-        if hasattr(module, serializer_name):
-            return getattr(module, serializer_name)
-
-    raise ValueError(f"Serializer '{serializer_name}' non trouvé pour le modèle '{model_class.__name__}'")
-
 
 def _build_odata_registry() -> Dict[str, Type[Model]]:
     """
@@ -315,7 +289,18 @@ class ODataModelViewSet(ModelViewSet):
         """Récupère le serializer depuis le registry en utilisant la convention de nommage"""
         entry = self.get_registry_entry()
         if entry:
-            return get_serializer_for_model(entry)
+            serializer_name = f"{entry.__name__}Serializer"
+            serializer_modules = []
+            for app in settings.INSTALLED_APPS:
+                try:
+                    module = importlib.import_module(f"{app}.serializers")
+                    serializer_modules.append(module)
+                except ImportError:
+                    continue
+            for module in serializer_modules:
+                if hasattr(module, serializer_name):
+                    return getattr(module, serializer_name)
+            raise ValueError(f"Serializer '{serializer_name}' non trouvé pour le modèle '{entry.__name__}'")
         return self.serializer_class
 
     def apply_odata_params(self, queryset):

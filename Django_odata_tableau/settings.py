@@ -8,9 +8,8 @@ INSTALLED_APPS = [
     "my_app",
     "second_app",
     "vessel",
-    "rest_framework",
-    "django_odata",
     "rest_flex_fields",
+    "rest_framework",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -20,7 +19,6 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "my_app.middleware.OdataVersionMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
