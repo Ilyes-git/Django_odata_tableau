@@ -6,6 +6,7 @@ DEBUG = True
 ALLOWED_HOSTS=["*"]
 
 INSTALLED_APPS = [
+    "customaps",
     "my_app",
     "second_app",
     "vessel",

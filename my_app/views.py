@@ -9,6 +9,7 @@ import re
 import operator
 import json
 
+from customaps.models import Folder, Map
 from .models import Person, Car, Product
 from .serializers import generate_serializer
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
@@ -50,6 +51,8 @@ ODATA_MODELS_REGISTRY = {
         'vessel_flag_mmsi_histories': VesselFlagMmsiHistory,
         'projects': Project,
         'vessel_project_histories': VesselProjectHistory,
+        'maps': Map,
+        'folders': Folder
     }
 
 
@@ -200,10 +203,88 @@ class ODataModelViewSet(ModelViewSet):
 
         queryset = entry.objects.all()
 
+        # Appliquer l'optimisation des requêtes (select_related / prefetch_related)
+        queryset = self.apply_query_optimization(queryset)
+
         # Appliquer les paramètres OData
         try:
             queryset = self.apply_odata_params(queryset)
         except ValueError:
+            pass
+
+        return queryset
+
+    def apply_query_optimization(self, queryset):
+        """
+        Optimise automatiquement les requêtes en utilisant select_related et prefetch_related
+        basé sur le paramètre $expand pour éviter le problème N+1
+        """
+        expand_param = self.request.GET.get("$expand", "")
+        if not expand_param:
+            return queryset
+
+        # Parser les champs à expand (même format que dans get_serializer_context)
+        import re
+
+        # Pattern: fieldname($param1=value1,$param2=value2)
+        pattern = r'(\w+)\(([^)]+)\)'
+        expand_fields = set()
+
+        # Extraire les champs entre parenthèses
+        for match in re.finditer(pattern, expand_param):
+            expand_fields.add(match.group(1))
+
+        # Extraire aussi les champs simples sans parenthèses
+        simple_expand = re.sub(pattern, '', expand_param)
+        for field in simple_expand.split(','):
+            field = field.strip()
+            if field:
+                expand_fields.add(field)
+
+        # Analyser le modèle pour déterminer quels champs sont des ForeignKey/OneToOne (select_related)
+        # et quels sont des reverse relations (prefetch_related)
+        model = self.get_registry_entry()
+        if not model:
+            return queryset
+
+        select_related_fields = []
+        prefetch_related_fields = []
+
+        for field_name in expand_fields:
+            try:
+                field = model._meta.get_field(field_name)
+
+                # ForeignKey et OneToOneField: utiliser select_related
+                if hasattr(field, 'many_to_one') and field.many_to_one:
+                    select_related_fields.append(field_name)
+                elif hasattr(field, 'one_to_one') and field.one_to_one:
+                    select_related_fields.append(field_name)
+                # ManyToMany et autres: utiliser prefetch_related
+                else:
+                    prefetch_related_fields.append(field_name)
+            except Exception:
+                # Si get_field échoue, essayer comme reverse relation
+                # mais seulement si c'est un nom de related_name valide
+                try:
+                    # Vérifions si c'est une reverse relation en accédant au related object
+                    rel = getattr(model, field_name, None)
+                    if rel and hasattr(rel, 'field'):
+                        # C'est probablement une relation valide
+                        prefetch_related_fields.append(field_name)
+                    # Sinon on ignore silencieusement
+                except Exception:
+                    # Ignorer les champs invalides
+                    pass
+
+        # Appliquer les optimisations
+        try:
+            if select_related_fields:
+                queryset = queryset.select_related(*select_related_fields)
+
+            if prefetch_related_fields:
+                queryset = queryset.prefetch_related(*prefetch_related_fields)
+        except Exception:
+            # Si l'optimisation échoue (champ invalide), retourner le queryset non optimisé
             pass
 
         return queryset
@@ -223,16 +304,69 @@ class ODataModelViewSet(ModelViewSet):
                 self.request = request
                 self.translated_params = self._translate_odata_params()
 
+            def _parse_nested_expand(self, expand_str):
+                """
+                Parse la syntaxe OData nested: author($select=name,bio)
+                Retourne: 'author' avec les params imbriqués stockés
+                """
+                import re
+
+                result = {}
+                # Pattern: fieldname($param1=value1,$param2=value2)
+                # Important: utiliser [^)]+ pour capturer tout jusqu'à la parenthèse fermante
+                pattern = r'(\w+)\(([^)]+)\)'
+
+                for match in re.finditer(pattern, expand_str):
+                    field_name = match.group(1)
+                    params_str = match.group(2)
+
+                    # Parser les paramètres imbriqués
+                    # Split seulement sur les = qui ne sont pas dans une liste de valeurs
+                    nested_params = {}
+
+                    # Pattern pour extraire key=value pairs
+                    # key pourrait être $select, $expand, etc.
+                    # value peut contenir des virgules (ex: select=name,bio)
+                    param_pattern = r'(\$?\w+)=([^,$]+(?:,[^,$]+)*)'
+
+                    for param_match in re.finditer(param_pattern, params_str):
+                        key = param_match.group(1).lstrip('$')
+                        value = param_match.group(2)
+                        nested_params[key] = value
+
+                    result[field_name] = nested_params
+
+                # Extraire aussi les champs sans parenthèses
+                simple_fields = re.sub(pattern, '', expand_str)
+                for field in simple_fields.split(','):
+                    field = field.strip()
+                    if field:
+                        result[field] = {}
+
+                return result
+
             def _translate_odata_params(self):
-                """Translate OData params ($expand) to drf-flex-fields params (expand)"""
+                """Translate OData params ($expand, $select) to drf-flex-fields params (expand, fields)"""
                 translated = {}
+                nested_expand_config = {}
+
                 for key, value in self.request.GET.items():
                     if key == '$expand':
-                        translated['expand'] = value
+                        # Parser la syntaxe nested
+                        nested_config = self._parse_nested_expand(value)
+                        nested_expand_config = nested_config
+
+                        # Pour drf-flex-fields, passer juste les noms des champs à expand
+                        expand_fields = ','.join(nested_config.keys())
+                        translated['expand'] = expand_fields
+
                     elif key == '$select':
                         translated['select'] = value
                     else:
                         translated[key] = value
+
+                # Stocker la config imbriquée pour accès ultérieur
+                self.nested_expand_config = nested_expand_config
                 return translated
 
             def __getattr__(self, name):
@@ -244,8 +378,9 @@ class ODataModelViewSet(ModelViewSet):
                 """Retourner les params traduits comme drf-flex-fields les attend"""
                 # Créer un QueryDict-like object
                 class QueryParamsProxy:
-                    def __init__(self, params):
+                    def __init__(self, params, nested_config=None):
                         self.params = params
+                        self.nested_config = nested_config or {}
 
                     def get(self, key, default=None):
                         return self.params.get(key, default)
@@ -256,7 +391,11 @@ class ODataModelViewSet(ModelViewSet):
                             return value.split(',') if isinstance(value, str) else [value]
                         return []
 
-                return QueryParamsProxy(self.translated_params)
+                    def get_nested_config(self, field):
+                        """Récupère la config imbriquée pour un champ expand"""
+                        return self.nested_config.get(field, {})
+
+                return QueryParamsProxy(self.translated_params, self.nested_expand_config)
 
         # Remplacer la request dans le contexte par notre wrapper
         context['request'] = ODataQueryParamsWrapper(context['request'])
