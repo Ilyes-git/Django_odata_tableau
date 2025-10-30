@@ -398,7 +398,11 @@ class ODataModelViewSet(ModelViewSet):
                 return QueryParamsProxy(self.translated_params, self.nested_expand_config)
 
         # Remplacer la request dans le contexte par notre wrapper
-        context['request'] = ODataQueryParamsWrapper(context['request'])
+        wrapper = ODataQueryParamsWrapper(context['request'])
+        context['request'] = wrapper
+
+        # Stocker le wrapper sur la vraie requête pour accès ultérieur
+        self.request._odata_wrapper = wrapper
 
         return context
 
@@ -482,6 +486,66 @@ class ODataModelViewSet(ModelViewSet):
             selected_data.append(selected_item)
         return selected_data
 
+    def apply_nested_select(self, data, nested_expand_config):
+        """
+        Applique les paramètres $select imbriqués pour les champs expandés.
+        Par exemple: $expand=parent($select=id) affectera le parent développé.
+
+        nested_expand_config est un dictionnaire de format:
+        {
+            'parent': {'select': 'id'},
+            'subfolders': {'select': 'id,name'}
+        }
+        """
+        if not nested_expand_config or not isinstance(data, list):
+            return data
+
+        result = []
+        for item in data:
+            if not isinstance(item, dict):
+                result.append(item)
+                continue
+
+            # Copier l'item
+            processed_item = dict(item)
+
+            # Pour chaque champ qui a une configuration imbriquée
+            for field_name, nested_config in nested_expand_config.items():
+                if field_name not in processed_item:
+                    continue
+
+                field_value = processed_item[field_name]
+
+                # Si le champ contient un select imbriqué
+                if 'select' in nested_config and nested_config['select']:
+                    select_fields = [f.strip() for f in nested_config['select'].split(',')]
+
+                    # Cas 1: La valeur est un objet (relation one-to-one)
+                    if isinstance(field_value, dict):
+                        filtered_obj = {
+                            k: v for k, v in field_value.items()
+                            if k in select_fields or k.startswith('@')
+                        }
+                        processed_item[field_name] = filtered_obj
+
+                    # Cas 2: La valeur est une liste (relation many-to-many ou one-to-many)
+                    elif isinstance(field_value, list):
+                        filtered_list = []
+                        for obj in field_value:
+                            if isinstance(obj, dict):
+                                filtered_obj = {
+                                    k: v for k, v in obj.items()
+                                    if k in select_fields or k.startswith('@')
+                                }
+                                filtered_list.append(filtered_obj)
+                            else:
+                                filtered_list.append(obj)
+                        processed_item[field_name] = filtered_list
+
+            result.append(processed_item)
+
+        return result
+
     def list(self, request, *args, **kwargs):
         """GET /EntitySet - Liste avec support OData ($filter, $orderby, $skip, $top, $select, $expand)"""
         try:
@@ -497,6 +561,13 @@ class ODataModelViewSet(ModelViewSet):
 
             # Appliquer $select pour filtrer les colonnes (si pas géré par le serializer)
             data = self.apply_select(data)
+
+            # Appliquer les $select imbriqués (nested select dans $expand)
+            # Récupérer la configuration imbriquée depuis le wrapper OData
+            nested_config = {}
+            if hasattr(self.request, '_odata_wrapper') and hasattr(self.request._odata_wrapper, 'nested_expand_config'):
+                nested_config = self.request._odata_wrapper.nested_expand_config
+            data = self.apply_nested_select(data, nested_config)
 
             # Ajouter métadonnées OData
             entry = self.get_registry_entry()
