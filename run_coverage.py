@@ -32,6 +32,7 @@ def run_tests_with_coverage():
         "--cov=my_app",
         "--cov=second_app",
         "--cov=vessel",
+        "--cov=customaps",
         "--cov-report=term-missing",
         "--cov-report=html",
         "--cov-report=json:.coverage.json",
