@@ -207,9 +207,8 @@ class ODataFilterParser:
 
 
 class ODataModelViewSet(ModelViewSet):
-    """ViewSet générique dynamique pour OData - s'adapte au registry"""
+    """ViewSet générique pour OData - s'adapte dynamiquement au registry"""
 
-    # Seront définis dynamiquement
     queryset = None
     serializer_class = None
     entity_set_name = None
@@ -249,25 +248,18 @@ class ODataModelViewSet(ModelViewSet):
 
     def _create_odata_wrapper(self):
         """Crée le wrapper OData pour parser les paramètres imbriqués"""
-        # Import de la classe depuis get_serializer_context
         class ODataQueryParamsWrapper:
             """Wrapper qui traduit les paramètres OData en paramètres drf-flex-fields"""
             def __init__(self, request):
                 self.request = request
+                self.nested_expand_config = {}
                 self.translated_params = self._translate_odata_params()
 
             def _parse_nested_expand(self, expand_str):
-                """
-                Parse la syntaxe OData nested: author($select=name,bio) ou author($filter=startswith(first_name,'A'))
-                Retourne: 'author' avec les params imbriqués stockés
-                Gère les parenthèses imbriquées
-                """
-                import re
-
+                """Parse la syntaxe OData nested avec support des parenthèses imbriquées"""
                 result = {}
                 i = 0
                 while i < len(expand_str):
-                    # Find the next field name (starts with letter/underscore, contains word chars)
                     match = re.match(r'(\w+)', expand_str[i:])
                     if not match:
                         i += 1
@@ -276,18 +268,16 @@ class ODataModelViewSet(ModelViewSet):
                     field_name = match.group(1)
                     i += len(field_name)
 
-                    # Skip to next opening parenthesis
                     if i >= len(expand_str) or expand_str[i] != '(':
                         result[field_name] = {}
-                        # Skip until comma or end
                         while i < len(expand_str) and expand_str[i] != ',':
                             i += 1
                         if i < len(expand_str):
-                            i += 1  # Skip comma
+                            i += 1
                         continue
 
-                    # We have an opening paren, now find matching closing paren
-                    i += 1  # Skip opening paren
+                    # Trouver la parenthèse fermante correspondante
+                    i += 1
                     paren_count = 1
                     params_start = i
 
@@ -298,30 +288,23 @@ class ODataModelViewSet(ModelViewSet):
                             paren_count -= 1
                         i += 1
 
-                    params_str = expand_str[params_start:i-1]  # Exclude closing paren
-
-                    # Now parse the params
+                    params_str = expand_str[params_start:i-1]
                     nested_params = {}
 
-                    # Extract $filter parameter (might contain functions with parens)
+                    # Extraire $filter
                     filter_match = re.search(r'\$filter=([^$]*?)(?=,\$|$)', params_str)
                     if filter_match:
-                        filter_value = filter_match.group(1).strip()
-                        filter_value = filter_value.rstrip(',').strip()
-                        nested_params['filter'] = filter_value
+                        nested_params['filter'] = filter_match.group(1).strip().rstrip(',').strip()
 
-                    # Extract $select parameter - can have multiple fields separated by comma
+                    # Extraire $select
                     select_match = re.search(r'\$select=([^$]+?)(?=,\$|$)', params_str)
                     if select_match:
-                        select_value = select_match.group(1).strip()
-                        select_value = select_value.rstrip(',').strip()
-                        nested_params['select'] = select_value
+                        nested_params['select'] = select_match.group(1).strip().rstrip(',').strip()
 
-                    # Extract $expand parameter - need to handle nested parentheses
+                    # Extraire $expand imbriqué
                     expand_match = re.search(r'\$expand=', params_str)
                     if expand_match:
                         expand_start = expand_match.end()
-                        # Find the value for expand (handle nested parentheses)
                         j = expand_start
                         paren_depth = 0
                         while j < len(params_str):
@@ -329,40 +312,31 @@ class ODataModelViewSet(ModelViewSet):
                                 paren_depth += 1
                             elif params_str[j] == ')':
                                 paren_depth -= 1
-                            elif params_str[j] == ',' and paren_depth == 0:
-                                break
-                            elif params_str[j] == '$' and paren_depth == 0:
+                            elif params_str[j] in (',', '$') and paren_depth == 0:
                                 break
                             j += 1
-                        expand_value = params_str[expand_start:j].strip()
-                        nested_params['expand'] = expand_value
+                        nested_params['expand'] = params_str[expand_start:j].strip()
 
                     result[field_name] = nested_params
-
-                    # Skip comma if present
                     if i < len(expand_str) and expand_str[i] == ',':
                         i += 1
 
                 return result
 
             def _translate_odata_params(self):
-                """Translate OData params ($expand, $select) to drf-flex-fields params (expand, fields)"""
+                """Traduit les paramètres OData en paramètres drf-flex-fields"""
                 translated = {}
-                nested_expand_config = {}
 
                 for key, value in self.request.GET.items():
                     if key == '$expand':
                         nested_config = self._parse_nested_expand(value)
-                        nested_expand_config = nested_config
-                        expand_fields = ','.join(nested_config.keys())
-                        translated['expand'] = expand_fields
-
+                        self.nested_expand_config = nested_config
+                        translated['expand'] = ','.join(nested_config.keys())
                     elif key == '$select':
                         translated['select'] = value
                     else:
                         translated[key] = value
 
-                self.nested_expand_config = nested_expand_config
                 return translated
 
             def __getattr__(self, name):
@@ -382,9 +356,7 @@ class ODataModelViewSet(ModelViewSet):
 
                     def getlist(self, key):
                         value = self.params.get(key, '')
-                        if value:
-                            return value.split(',') if isinstance(value, str) else [value]
-                        return []
+                        return value.split(',') if isinstance(value, str) and value else []
 
                     def get_nested_config(self, field):
                         return self.nested_config.get(field, {})
@@ -396,18 +368,11 @@ class ODataModelViewSet(ModelViewSet):
 
 
     def apply_query_optimization(self, queryset):
-        """
-        Optimise automatiquement les requêtes en utilisant select_related et prefetch_related
-        basé sur le paramètre $expand pour éviter le problème N+1
-        """
+        """Optimise les requêtes avec select_related et prefetch_related basé sur $expand"""
         expand_param = self.request.GET.get("$expand", "")
         if not expand_param:
             return queryset
 
-        # Parser les champs à expand (même format que dans get_serializer_context)
-        import re
-
-        # Pattern: fieldname($param1=value1,$param2=value2)
         pattern = r'(\w+)\(([^)]+)\)'
         expand_fields = set()
 
@@ -415,15 +380,13 @@ class ODataModelViewSet(ModelViewSet):
         for match in re.finditer(pattern, expand_param):
             expand_fields.add(match.group(1))
 
-        # Extraire aussi les champs simples sans parenthèses
+        # Extraire les champs simples sans parenthèses
         simple_expand = re.sub(pattern, '', expand_param)
         for field in simple_expand.split(','):
             field = field.strip()
             if field:
                 expand_fields.add(field)
 
-        # Analyser le modèle pour déterminer quels champs sont des ForeignKey/OneToOne (select_related)
-        # et quels sont des reverse relations (prefetch_related)
         model = self.get_registry_entry()
         if not model:
             return queryset
@@ -440,32 +403,22 @@ class ODataModelViewSet(ModelViewSet):
                     select_related_fields.append(field_name)
                 elif hasattr(field, 'one_to_one') and field.one_to_one:
                     select_related_fields.append(field_name)
-                # ManyToMany et autres: utiliser prefetch_related
                 else:
                     prefetch_related_fields.append(field_name)
             except Exception:
-                # Si get_field échoue, essayer comme reverse relation
-                # mais seulement si c'est un nom de related_name valide
                 try:
-                    # Vérifions si c'est une reverse relation en accédant au related object
                     rel = getattr(model, field_name, None)
                     if rel and hasattr(rel, 'field'):
-                        # C'est probablement une relation valide
                         prefetch_related_fields.append(field_name)
-                    # Sinon on ignore silencieusement
                 except Exception:
-                    # Ignorer les champs invalides
                     pass
 
-        # Appliquer les optimisations
         try:
             if select_related_fields:
                 queryset = queryset.select_related(*select_related_fields)
-
             if prefetch_related_fields:
                 queryset = queryset.prefetch_related(*prefetch_related_fields)
         except Exception:
-            # Si l'optimisation échoue (champ invalide), retourner le queryset non optimisé
             pass
 
         return queryset
@@ -513,18 +466,16 @@ class ODataModelViewSet(ModelViewSet):
         if not entry:
             raise ValueError(f"Entity set '{self.entity_set_name}' non enregistré")
 
-        model = entry
-
         # $filter
         filter_param = self.request.GET.get("$filter", "")
         if filter_param:
             try:
-                filter_q = ODataFilterParser.parse_filter(filter_param, model)
+                filter_q = ODataFilterParser.parse_filter(filter_param, entry)
                 queryset = queryset.filter(filter_q)
             except Exception as e:
                 raise ValueError(f"Filtre invalide: {str(e)}")
 
-        # Appliquer les filtres imbriqués de $expand
+        # Filtres imbriqués
         queryset = self.apply_nested_expand_filters(queryset)
 
         # $orderby
@@ -535,10 +486,7 @@ class ODataModelViewSet(ModelViewSet):
                 parts = field_spec.strip().split()
                 field = parts[0]
                 direction = parts[1].lower() if len(parts) > 1 else 'asc'
-                if direction == 'desc':
-                    order_fields.append(f"-{field}")
-                else:
-                    order_fields.append(field)
+                order_fields.append(f"-{field}" if direction == 'desc' else field)
             if order_fields:
                 queryset = queryset.order_by(*order_fields)
 
@@ -557,16 +505,11 @@ class ODataModelViewSet(ModelViewSet):
         return queryset
 
     def apply_nested_expand_filters(self, queryset):
-        """
-        Applique les filtres imbriqués de $expand au niveau du queryset.
-        Par exemple: $expand=owner($filter=first_name eq 'John')
-        va filtrer le queryset pour retourner seulement les items dont le owner match le filtre.
-        """
+        """Applique les filtres imbriqués de $expand au niveau du queryset"""
         expand_param = self.request.GET.get("$expand", "")
         if not expand_param:
             return queryset
 
-        # Parser les paramètres imbriqués depuis le wrapper OData
         nested_config = {}
         if hasattr(self.request, '_odata_wrapper') and hasattr(self.request._odata_wrapper, 'nested_expand_config'):
             nested_config = self.request._odata_wrapper.nested_expand_config
@@ -574,66 +517,42 @@ class ODataModelViewSet(ModelViewSet):
         if not nested_config:
             return queryset
 
-        # Pour chaque champ avec un filtre imbriqué
+        # Appliquer les filtres imbriqués
         for field_name, nested_params in nested_config.items():
             if 'filter' not in nested_params:
                 continue
 
             filter_str = nested_params['filter']
-
-            # Récupérer le modèle actuel et le modèle de la relation
             model = self.get_registry_entry()
             if not model:
                 continue
 
             try:
-                # Récupérer le modèle de la relation
-                try:
-                    field = model._meta.get_field(field_name)
-                    related_model = field.related_model
-                except Exception as e:
-                    # Si on ne trouve pas le champ, on ignore
-                    continue
-
-                # Parser le filtre OData sur le modèle de la relation
+                field = model._meta.get_field(field_name)
+                related_model = field.related_model
                 filter_q = ODataFilterParser.parse_filter(filter_str, related_model)
-
-                # Construire les conditions préfixées avec le nom du champ
-                # Transformer la Q object pour ajouter le préfixe
                 prefixed_q = self._prefix_q_object(filter_q, field_name)
-
-                # Appliquer le filtre sur la relation imbriquée
                 queryset = queryset.filter(prefixed_q)
-            except Exception as e:
-                # Si le filtre imbriqué échoue, continuer sans le filtrer
+            except Exception:
                 pass
 
         return queryset
 
     def _prefix_q_object(self, q_obj, prefix):
-        """
-        Ajoute un préfixe à tous les lookups dans une Q object.
-        Par exemple: Q(first_name='John') devient Q(owner__first_name='John')
-        """
+        """Ajoute un préfixe à tous les lookups dans une Q object pour les requêtes imbriquées"""
         if not q_obj:
             return q_obj
 
-        # Créer une nouvelle Q object avec les lookups préfixés
         new_children = []
         for child in q_obj.children:
             if isinstance(child, tuple):
-                # C'est un tuple (key, value)
                 key, value = child
-                new_key = f"{prefix}__{key}"
-                new_children.append((new_key, value))
+                new_children.append((f"{prefix}__{key}", value))
             elif isinstance(child, Q):
-                # C'est une Q object imbriquée - appeler récursivement
                 new_children.append(self._prefix_q_object(child, prefix))
             else:
-                # Autrement, le garder tel quel
                 new_children.append(child)
 
-        # Créer une nouvelle Q object avec les enfants modifiés
         new_q = Q()
         new_q.children = new_children
         new_q.connector = q_obj.connector
@@ -655,16 +574,7 @@ class ODataModelViewSet(ModelViewSet):
         return selected_data
 
     def apply_nested_select(self, data, nested_expand_config):
-        """
-        Applique les paramètres $select imbriqués pour les champs expandés.
-        Par exemple: $expand=parent($select=id) affectera le parent développé.
-
-        nested_expand_config est un dictionnaire de format:
-        {
-            'parent': {'select': 'id'},
-            'subfolders': {'select': 'id,name'}
-        }
-        """
+        """Applique les paramètres $select imbriqués pour les champs expandés"""
         if not nested_expand_config or not isinstance(data, list):
             return data
 
@@ -674,41 +584,26 @@ class ODataModelViewSet(ModelViewSet):
                 result.append(item)
                 continue
 
-            # Copier l'item
             processed_item = dict(item)
 
-            # Pour chaque champ qui a une configuration imbriquée
             for field_name, nested_config in nested_expand_config.items():
-                if field_name not in processed_item:
+                if field_name not in processed_item or 'select' not in nested_config:
                     continue
 
+                select_fields = [f.strip() for f in nested_config['select'].split(',')]
                 field_value = processed_item[field_name]
 
-                # Si le champ contient un select imbriqué
-                if 'select' in nested_config and nested_config['select']:
-                    select_fields = [f.strip() for f in nested_config['select'].split(',')]
-
-                    # Cas 1: La valeur est un objet (relation one-to-one)
-                    if isinstance(field_value, dict):
-                        filtered_obj = {
-                            k: v for k, v in field_value.items()
-                            if k in select_fields or k.startswith('@')
-                        }
-                        processed_item[field_name] = filtered_obj
-
-                    # Cas 2: La valeur est une liste (relation many-to-many ou one-to-many)
-                    elif isinstance(field_value, list):
-                        filtered_list = []
-                        for obj in field_value:
-                            if isinstance(obj, dict):
-                                filtered_obj = {
-                                    k: v for k, v in obj.items()
-                                    if k in select_fields or k.startswith('@')
-                                }
-                                filtered_list.append(filtered_obj)
-                            else:
-                                filtered_list.append(obj)
-                        processed_item[field_name] = filtered_list
+                if isinstance(field_value, dict):
+                    processed_item[field_name] = {
+                        k: v for k, v in field_value.items()
+                        if k in select_fields or k.startswith('@')
+                    }
+                elif isinstance(field_value, list):
+                    processed_item[field_name] = [
+                        {k: v for k, v in obj.items() if k in select_fields or k.startswith('@')}
+                        if isinstance(obj, dict) else obj
+                        for obj in field_value
+                    ]
 
             result.append(processed_item)
 
@@ -716,58 +611,43 @@ class ODataModelViewSet(ModelViewSet):
 
 
     def list(self, request, *args, **kwargs):
-        """GET /EntitySet - Liste avec support OData ($filter, $orderby, $skip, $top, $select, $expand)"""
+        """GET /EntitySet - Liste avec support OData"""
         try:
             queryset = self.get_queryset()
             total_count = queryset.count()
-
-            # Appliquer la pagination
             queryset = self.paginate_queryset(queryset)
 
-            # Créer le serializer avec le contexte contenant expand et select
             serializer = self.get_serializer(queryset, many=True)
             data = serializer.data
-
-            # Appliquer $select pour filtrer les colonnes (si pas géré par le serializer)
             data = self.apply_select(data)
 
-            # Appliquer les $select imbriqués (nested select dans $expand)
-            # Récupérer la configuration imbriquée depuis le wrapper OData
-            nested_config = {}
-            if hasattr(self.request, '_odata_wrapper') and hasattr(self.request._odata_wrapper, 'nested_expand_config'):
-                nested_config = self.request._odata_wrapper.nested_expand_config
+            nested_config = getattr(self.request._odata_wrapper, 'nested_expand_config', {}) if hasattr(self.request, '_odata_wrapper') else {}
             data = self.apply_nested_select(data, nested_config)
 
-            # Ajouter métadonnées OData
             entry = self.get_registry_entry()
             odata_type = f"#Odata.{entry.__name__}" if entry else None
             for item in data:
                 if isinstance(item, dict) and odata_type:
                     item["@odata.type"] = odata_type
 
-            # Formater réponse OData
             base_url = request.build_absolute_uri("/odata")
-            response_data = {
+            return Response({
                 "value": data,
                 "@odata.context": f"{base_url}/$metadata#{self.entity_set_name}",
                 "@odata.count": total_count
-            }
-
-            return Response(response_data)
+            })
         except ValueError as ve:
             return Response({"error": str(ve)}, status=400)
         except Exception as e:
             return Response({"error": f"Erreur lors de la lecture: {str(e)}"}, status=500)
 
     def retrieve(self, request, *args, **kwargs):
-        """GET /EntitySet(id) - Entité spécifique avec support $expand et $select"""
+        """GET /EntitySet(id) - Entité spécifique"""
         try:
             instance = self.get_object()
             serializer = self.get_serializer(instance)
             data = serializer.data
 
-
-            # Ajouter métadonnées OData
             entry = self.get_registry_entry()
             if isinstance(data, dict):
                 data["@odata.type"] = f"#Odata.{entry.__name__}" if entry else None
