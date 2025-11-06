@@ -89,34 +89,60 @@ class ODataFilterParser:
 
     @staticmethod
     def _tokenize_filter(filter_str):
-        """Tokenize le filtre en conditions simples."""
-        pattern = r"(\w+)\s+(eq|ne|lt|le|gt|ge|startswith|endswith|contains)\s+(?:'([^']*)'|(\d+(?:\.\d+)?)|(\d{4}-\d{2}-\d{2}))"
-
+        """Tokenize le filtre en conditions simples.
+        Supporte deux syntaxes:
+        1. Syntaxe fonctionnelle OData: startswith(field,'value'), endswith(field,'value'), contains(field,'value')
+        2. Syntaxe infix: field eq 'value', field gt 25, etc.
+        """
         tokens = []
         last_end = 0
 
-        for match in re.finditer(pattern, filter_str):
+        # Pattern pour les fonctions OData: startswith(field,'value'), endswith(...), contains(...)
+        # Group 1: function name, Group 2: field name, Group 3: value
+        function_pattern = r"(startswith|endswith|contains)\s*\(\s*(\w+)\s*,\s*'([^']*)'\s*\)"
+
+        # Pattern pour les opérateurs infix: field op value
+        # Group 4: field, Group 5: operator, Group 6-8: value (string/float/date)
+        infix_pattern = r"(\w+)\s+(eq|ne|lt|le|gt|ge)\s+(?:'([^']*)'|(\d+(?:\.\d+)?)|(\d{4}-\d{2}-\d{2}))"
+
+        # Combiner les deux patterns avec | pour alterner
+        combined_pattern = f"{function_pattern}|{infix_pattern}"
+
+        for match in re.finditer(combined_pattern, filter_str):
+            # Obtenir le texte entre le dernier match et celui-ci
             between_text = filter_str[last_end:match.start()].strip()
             if between_text and between_text.lower() in ['and', 'or']:
                 tokens.append(between_text.lower())
 
-            field = match.group(1)
-            op = match.group(2)
-
-            if match.group(3) is not None:
+            # Vérifier quel pattern a matché
+            if match.group(1):  # function_pattern matched (groups 1-3)
+                op = match.group(1)  # startswith, endswith, contains
+                field = match.group(2)
                 value = match.group(3)
-            elif match.group(4) is not None:
-                value = float(match.group(4)) if '.' in match.group(4) else int(match.group(4))
-            elif match.group(5) is not None:
-                value = match.group(5)
-            else:
-                continue
+                tokens.append({
+                    'field': field,
+                    'op': op,
+                    'value': value
+                })
+            else:  # infix_pattern matched (groups 4-8)
+                field = match.group(4)
+                op = match.group(5)
 
-            tokens.append({
-                'field': field,
-                'op': op,
-                'value': value
-            })
+                # Déterminer la valeur
+                if match.group(6) is not None:
+                    value = match.group(6)  # string value
+                elif match.group(7) is not None:
+                    value = float(match.group(7)) if '.' in match.group(7) else int(match.group(7))  # numeric
+                elif match.group(8) is not None:
+                    value = match.group(8)  # date
+                else:
+                    continue
+
+                tokens.append({
+                    'field': field,
+                    'op': op,
+                    'value': value
+                })
 
             last_end = match.end()
 
@@ -136,7 +162,10 @@ class ODataFilterParser:
                 op = token['op']
                 value = token['value']
 
-                if op in ODataFilterParser.OPERATORS:
+                # Gérer le cas spécial de 'ne' (non-égal)
+                if op == 'ne':
+                    q = ~Q(**{f"{field}__exact": value})
+                elif op in ODataFilterParser.OPERATORS:
                     q = Q(**{f"{field}__{ODataFilterParser._map_operator(op)}": value})
                 elif op == 'startswith':
                     q = Q(**{f"{field}__istartswith": value})
@@ -169,7 +198,6 @@ class ODataFilterParser:
         """Mappe les opérateurs OData aux lookups Django."""
         mapping = {
             'eq': 'exact',
-            'ne': 'ne',
             'lt': 'lt',
             'le': 'lte',
             'gt': 'gt',
@@ -203,6 +231,11 @@ class ODataModelViewSet(ModelViewSet):
 
         queryset = entry.objects.all()
 
+        # Créer le wrapper OData pour parser les paramètres imbriqués
+        # (important pour apply_nested_expand_filters qui en a besoin)
+        if not hasattr(self.request, '_odata_wrapper'):
+            self._create_odata_wrapper()
+
         # Appliquer l'optimisation des requêtes (select_related / prefetch_related)
         queryset = self.apply_query_optimization(queryset)
 
@@ -213,6 +246,154 @@ class ODataModelViewSet(ModelViewSet):
             pass
 
         return queryset
+
+    def _create_odata_wrapper(self):
+        """Crée le wrapper OData pour parser les paramètres imbriqués"""
+        # Import de la classe depuis get_serializer_context
+        class ODataQueryParamsWrapper:
+            """Wrapper qui traduit les paramètres OData en paramètres drf-flex-fields"""
+            def __init__(self, request):
+                self.request = request
+                self.translated_params = self._translate_odata_params()
+
+            def _parse_nested_expand(self, expand_str):
+                """
+                Parse la syntaxe OData nested: author($select=name,bio) ou author($filter=startswith(first_name,'A'))
+                Retourne: 'author' avec les params imbriqués stockés
+                Gère les parenthèses imbriquées
+                """
+                import re
+
+                result = {}
+                i = 0
+                while i < len(expand_str):
+                    # Find the next field name (starts with letter/underscore, contains word chars)
+                    match = re.match(r'(\w+)', expand_str[i:])
+                    if not match:
+                        i += 1
+                        continue
+
+                    field_name = match.group(1)
+                    i += len(field_name)
+
+                    # Skip to next opening parenthesis
+                    if i >= len(expand_str) or expand_str[i] != '(':
+                        result[field_name] = {}
+                        # Skip until comma or end
+                        while i < len(expand_str) and expand_str[i] != ',':
+                            i += 1
+                        if i < len(expand_str):
+                            i += 1  # Skip comma
+                        continue
+
+                    # We have an opening paren, now find matching closing paren
+                    i += 1  # Skip opening paren
+                    paren_count = 1
+                    params_start = i
+
+                    while i < len(expand_str) and paren_count > 0:
+                        if expand_str[i] == '(':
+                            paren_count += 1
+                        elif expand_str[i] == ')':
+                            paren_count -= 1
+                        i += 1
+
+                    params_str = expand_str[params_start:i-1]  # Exclude closing paren
+
+                    # Now parse the params
+                    nested_params = {}
+
+                    # Extract $filter parameter (might contain functions with parens)
+                    filter_match = re.search(r'\$filter=([^$]*?)(?=,\$|$)', params_str)
+                    if filter_match:
+                        filter_value = filter_match.group(1).strip()
+                        filter_value = filter_value.rstrip(',').strip()
+                        nested_params['filter'] = filter_value
+
+                    # Extract $select parameter - can have multiple fields separated by comma
+                    select_match = re.search(r'\$select=([^$]+?)(?=,\$|$)', params_str)
+                    if select_match:
+                        select_value = select_match.group(1).strip()
+                        select_value = select_value.rstrip(',').strip()
+                        nested_params['select'] = select_value
+
+                    # Extract $expand parameter - need to handle nested parentheses
+                    expand_match = re.search(r'\$expand=', params_str)
+                    if expand_match:
+                        expand_start = expand_match.end()
+                        # Find the value for expand (handle nested parentheses)
+                        j = expand_start
+                        paren_depth = 0
+                        while j < len(params_str):
+                            if params_str[j] == '(':
+                                paren_depth += 1
+                            elif params_str[j] == ')':
+                                paren_depth -= 1
+                            elif params_str[j] == ',' and paren_depth == 0:
+                                break
+                            elif params_str[j] == '$' and paren_depth == 0:
+                                break
+                            j += 1
+                        expand_value = params_str[expand_start:j].strip()
+                        nested_params['expand'] = expand_value
+
+                    result[field_name] = nested_params
+
+                    # Skip comma if present
+                    if i < len(expand_str) and expand_str[i] == ',':
+                        i += 1
+
+                return result
+
+            def _translate_odata_params(self):
+                """Translate OData params ($expand, $select) to drf-flex-fields params (expand, fields)"""
+                translated = {}
+                nested_expand_config = {}
+
+                for key, value in self.request.GET.items():
+                    if key == '$expand':
+                        nested_config = self._parse_nested_expand(value)
+                        nested_expand_config = nested_config
+                        expand_fields = ','.join(nested_config.keys())
+                        translated['expand'] = expand_fields
+
+                    elif key == '$select':
+                        translated['select'] = value
+                    else:
+                        translated[key] = value
+
+                self.nested_expand_config = nested_expand_config
+                return translated
+
+            def __getattr__(self, name):
+                """Déléguer à la request originale"""
+                return getattr(self.request, name)
+
+            @property
+            def query_params(self):
+                """Retourner les params traduits"""
+                class QueryParamsProxy:
+                    def __init__(self, params, nested_config=None):
+                        self.params = params
+                        self.nested_config = nested_config or {}
+
+                    def get(self, key, default=None):
+                        return self.params.get(key, default)
+
+                    def getlist(self, key):
+                        value = self.params.get(key, '')
+                        if value:
+                            return value.split(',') if isinstance(value, str) else [value]
+                        return []
+
+                    def get_nested_config(self, field):
+                        return self.nested_config.get(field, {})
+
+                return QueryParamsProxy(self.translated_params, self.nested_expand_config)
+
+        wrapper = ODataQueryParamsWrapper(self.request)
+        self.request._odata_wrapper = wrapper
+
 
     def apply_query_optimization(self, queryset):
         """
@@ -293,118 +474,17 @@ class ODataModelViewSet(ModelViewSet):
         """Ajouter les paramètres OData au contexte du serializer pour drf-flex-fields"""
         context = super().get_serializer_context()
 
-        # Traduire les paramètres OData en paramètres drf-flex-fields
-        # drf-flex-fields lit automatiquement 'expand' et 'fields' depuis les query_params
-        # Donc on va créer une vue spéciale de la request avec les params traduits
+        # Utiliser le wrapper OData déjà créé dans get_queryset()
+        if hasattr(self.request, '_odata_wrapper'):
+            context['request'] = self.request._odata_wrapper
+            return context
 
-        # Créer une wrapper autour de la request pour traduire les paramètres à la volée
-        class ODataQueryParamsWrapper:
-            """Wrapper qui traduit les paramètres OData en paramètres drf-flex-fields"""
-            def __init__(self, request):
-                self.request = request
-                self.translated_params = self._translate_odata_params()
-
-            def _parse_nested_expand(self, expand_str):
-                """
-                Parse la syntaxe OData nested: author($select=name,bio)
-                Retourne: 'author' avec les params imbriqués stockés
-                """
-                import re
-
-                result = {}
-                # Pattern: fieldname($param1=value1,$param2=value2)
-                # Important: utiliser [^)]+ pour capturer tout jusqu'à la parenthèse fermante
-                pattern = r'(\w+)\(([^)]+)\)'
-
-                for match in re.finditer(pattern, expand_str):
-                    field_name = match.group(1)
-                    params_str = match.group(2)
-
-                    # Parser les paramètres imbriqués
-                    # Split seulement sur les = qui ne sont pas dans une liste de valeurs
-                    nested_params = {}
-
-                    # Pattern pour extraire key=value pairs
-                    # key pourrait être $select, $expand, etc.
-                    # value peut contenir des virgules (ex: select=name,bio)
-                    param_pattern = r'(\$?\w+)=([^,$]+(?:,[^,$]+)*)'
-
-                    for param_match in re.finditer(param_pattern, params_str):
-                        key = param_match.group(1).lstrip('$')
-                        value = param_match.group(2)
-                        nested_params[key] = value
-
-                    result[field_name] = nested_params
-
-                # Extraire aussi les champs sans parenthèses
-                simple_fields = re.sub(pattern, '', expand_str)
-                for field in simple_fields.split(','):
-                    field = field.strip()
-                    if field:
-                        result[field] = {}
-
-                return result
-
-            def _translate_odata_params(self):
-                """Translate OData params ($expand, $select) to drf-flex-fields params (expand, fields)"""
-                translated = {}
-                nested_expand_config = {}
-
-                for key, value in self.request.GET.items():
-                    if key == '$expand':
-                        # Parser la syntaxe nested
-                        nested_config = self._parse_nested_expand(value)
-                        nested_expand_config = nested_config
-
-                        # Pour drf-flex-fields, passer juste les noms des champs à expand
-                        expand_fields = ','.join(nested_config.keys())
-                        translated['expand'] = expand_fields
-
-                    elif key == '$select':
-                        translated['select'] = value
-                    else:
-                        translated[key] = value
-
-                # Stocker la config imbriquée pour accès ultérieur
-                self.nested_expand_config = nested_expand_config
-                return translated
-
-            def __getattr__(self, name):
-                """Déléguer à la request originale"""
-                return getattr(self.request, name)
-
-            @property
-            def query_params(self):
-                """Retourner les params traduits comme drf-flex-fields les attend"""
-                # Créer un QueryDict-like object
-                class QueryParamsProxy:
-                    def __init__(self, params, nested_config=None):
-                        self.params = params
-                        self.nested_config = nested_config or {}
-
-                    def get(self, key, default=None):
-                        return self.params.get(key, default)
-
-                    def getlist(self, key):
-                        value = self.params.get(key, '')
-                        if value:
-                            return value.split(',') if isinstance(value, str) else [value]
-                        return []
-
-                    def get_nested_config(self, field):
-                        """Récupère la config imbriquée pour un champ expand"""
-                        return self.nested_config.get(field, {})
-
-                return QueryParamsProxy(self.translated_params, self.nested_expand_config)
-
-        # Remplacer la request dans le contexte par notre wrapper
-        wrapper = ODataQueryParamsWrapper(context['request'])
-        context['request'] = wrapper
-
-        # Stocker le wrapper sur la vraie requête pour accès ultérieur
-        self.request._odata_wrapper = wrapper
-
+        # Fallback: créer le wrapper si ce n'est pas fait
+        self._create_odata_wrapper()
+        context['request'] = self.request._odata_wrapper
         return context
+
+
 
     def get_serializer_class(self):
         """Récupère le serializer depuis le registry en utilisant la convention de nommage"""
@@ -444,6 +524,9 @@ class ODataModelViewSet(ModelViewSet):
             except Exception as e:
                 raise ValueError(f"Filtre invalide: {str(e)}")
 
+        # Appliquer les filtres imbriqués de $expand
+        queryset = self.apply_nested_expand_filters(queryset)
+
         # $orderby
         orderby_param = self.request.GET.get("$orderby", "")
         if orderby_param:
@@ -472,6 +555,91 @@ class ODataModelViewSet(ModelViewSet):
             queryset = queryset[:top]
 
         return queryset
+
+    def apply_nested_expand_filters(self, queryset):
+        """
+        Applique les filtres imbriqués de $expand au niveau du queryset.
+        Par exemple: $expand=owner($filter=first_name eq 'John')
+        va filtrer le queryset pour retourner seulement les items dont le owner match le filtre.
+        """
+        expand_param = self.request.GET.get("$expand", "")
+        if not expand_param:
+            return queryset
+
+        # Parser les paramètres imbriqués depuis le wrapper OData
+        nested_config = {}
+        if hasattr(self.request, '_odata_wrapper') and hasattr(self.request._odata_wrapper, 'nested_expand_config'):
+            nested_config = self.request._odata_wrapper.nested_expand_config
+
+        if not nested_config:
+            return queryset
+
+        # Pour chaque champ avec un filtre imbriqué
+        for field_name, nested_params in nested_config.items():
+            if 'filter' not in nested_params:
+                continue
+
+            filter_str = nested_params['filter']
+
+            # Récupérer le modèle actuel et le modèle de la relation
+            model = self.get_registry_entry()
+            if not model:
+                continue
+
+            try:
+                # Récupérer le modèle de la relation
+                try:
+                    field = model._meta.get_field(field_name)
+                    related_model = field.related_model
+                except Exception as e:
+                    # Si on ne trouve pas le champ, on ignore
+                    continue
+
+                # Parser le filtre OData sur le modèle de la relation
+                filter_q = ODataFilterParser.parse_filter(filter_str, related_model)
+
+                # Construire les conditions préfixées avec le nom du champ
+                # Transformer la Q object pour ajouter le préfixe
+                prefixed_q = self._prefix_q_object(filter_q, field_name)
+
+                # Appliquer le filtre sur la relation imbriquée
+                queryset = queryset.filter(prefixed_q)
+            except Exception as e:
+                # Si le filtre imbriqué échoue, continuer sans le filtrer
+                pass
+
+        return queryset
+
+    def _prefix_q_object(self, q_obj, prefix):
+        """
+        Ajoute un préfixe à tous les lookups dans une Q object.
+        Par exemple: Q(first_name='John') devient Q(owner__first_name='John')
+        """
+        if not q_obj:
+            return q_obj
+
+        # Créer une nouvelle Q object avec les lookups préfixés
+        new_children = []
+        for child in q_obj.children:
+            if isinstance(child, tuple):
+                # C'est un tuple (key, value)
+                key, value = child
+                new_key = f"{prefix}__{key}"
+                new_children.append((new_key, value))
+            elif isinstance(child, Q):
+                # C'est une Q object imbriquée - appeler récursivement
+                new_children.append(self._prefix_q_object(child, prefix))
+            else:
+                # Autrement, le garder tel quel
+                new_children.append(child)
+
+        # Créer une nouvelle Q object avec les enfants modifiés
+        new_q = Q()
+        new_q.children = new_children
+        new_q.connector = q_obj.connector
+        new_q.negated = q_obj.negated
+        return new_q
+
 
     def apply_select(self, data):
         """Applique le paramètre $select pour filtrer les colonnes"""
@@ -545,6 +713,7 @@ class ODataModelViewSet(ModelViewSet):
             result.append(processed_item)
 
         return result
+
 
     def list(self, request, *args, **kwargs):
         """GET /EntitySet - Liste avec support OData ($filter, $orderby, $skip, $top, $select, $expand)"""
