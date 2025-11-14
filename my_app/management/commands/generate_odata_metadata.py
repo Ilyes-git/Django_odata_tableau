@@ -154,7 +154,7 @@ class ODataMetadataGenerator:
                         })
                         # Ajouter aussi la propriété de la clé étrangère
                         entity['fields'].append({
-                            'name': f"{field.name}_id",
+                            'name': f"{field.name}",
                             'type': 'Edm.Int32',
                             'nullable': True,
                             'is_key': False,
