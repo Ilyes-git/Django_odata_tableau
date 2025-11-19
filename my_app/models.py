@@ -5,6 +5,10 @@ class Person(models.Model):
     last_name = models.CharField(max_length=80)
     birth_date = models.DateField(null=True, blank=True)
 
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
 class Car(models.Model):
     brand = models.CharField(max_length=80)
     model = models.CharField(max_length=80)

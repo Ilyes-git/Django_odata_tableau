@@ -98,6 +98,46 @@ class ODataMetadataGenerator:
         field_class_name = field.__class__.__name__
         return self.FIELD_TYPE_MAPPING.get(field_class_name, 'Edm.String')
 
+    def extract_properties(self, model) -> List[Dict]:
+        """
+        Extraire les @property d'une classe Django.
+
+        Args:
+            model: La classe Django
+
+        Returns:
+            Liste des propriétés avec leur nom et type déduit
+        """
+        properties = []
+
+        # Parcourir les attributs de la classe
+        for attr_name in dir(model):
+            # Ignorer les attributs privés et magiques
+            if attr_name.startswith('_'):
+                continue
+
+            try:
+                attr = getattr(model, attr_name)
+
+                # Vérifier si c'est une propriété (property object)
+                if isinstance(attr, property):
+                    # Déduire le type OData (par défaut Edm.String)
+                    odata_type = 'Edm.String'
+
+                    properties.append({
+                        'name': attr_name,
+                        'type': odata_type,
+                        'nullable': True,
+                        'is_key': False,
+                        'max_length': None,
+                        'is_property': True  # Marqueur pour les propriétés
+                    })
+            except (AttributeError, TypeError):
+                # Ignorer les erreurs d'accès
+                continue
+
+        return properties
+
     def should_include_model(self, model) -> bool:
         """Déterminer si un modèle doit être inclus."""
         model_name = model.__name__
@@ -200,6 +240,10 @@ class ODataMetadataGenerator:
                             'max_length': max_length
                         })
 
+            # Ajouter les @property du modèle
+            properties = self.extract_properties(model)
+            entity['fields'].extend(properties)
+
     def generate_edmx(self) -> str:
         """
         Générer le document EDMX complet.
@@ -294,6 +338,10 @@ class ODataMetadataGenerator:
                 # MaxLength pour les chaînes
                 if field['max_length'] and field['type'] == 'Edm.String':
                     property_def["$MaxLength"] = field['max_length']
+
+                # Marquer comme Computed si c'est une @property
+                if field.get('is_property', False):
+                    property_def["$Computed"] = True
 
                 entity_type_def[field['name']] = property_def
 
@@ -397,7 +445,13 @@ class ODataMetadataGenerator:
             if field['max_length']:
                 attrs['MaxLength'] = str(field['max_length'])
 
+            # Ajouter l'attribut Computed pour les @property
+            if field.get('is_property', False):
+                attrs['Computed'] = 'true'
+
             ET.SubElement(entity_type, 'Property', attrs)
+
+        # ...existing code...
 
         # Ajouter les NavigationProperty OData V4
         for nav_prop in entity['navigation_properties']:
@@ -608,7 +662,7 @@ class Command(BaseCommand):
         should_print = options['print']
 
         self.stdout.write(
-            self.style.SUCCESS('🔍 Génération du schéma metadata OData...')
+            self.style.SUCCESS('[*] Generation du schema metadata OData...')
         )
 
         try:
@@ -627,31 +681,31 @@ class Command(BaseCommand):
                 f.write(metadata_content)
 
             self.stdout.write(
-                self.style.SUCCESS(f'✅ Metadata sauvegardé dans: {output_file}')
+                self.style.SUCCESS(f'[OK] Metadata sauvegarde dans: {output_file}')
             )
 
             # Afficher le résumé
             summary = generator.get_summary()
-            self.stdout.write(self.style.WARNING('\n📊 Résumé:'))
-            self.stdout.write(f"   - Modèles trouvés: {summary['models_count']}")
-            self.stdout.write(f"   - Types d'entités: {summary['entity_types_count']}")
+            self.stdout.write(self.style.WARNING('\n[RESUME]:'))
+            self.stdout.write(f"   - Modeles trouves: {summary['models_count']}")
+            self.stdout.write(f"   - Types d'entites: {summary['entity_types_count']}")
             self.stdout.write(f"   - Relationships: {summary['relationships_count']}")
 
-            self.stdout.write(self.style.WARNING('\n   Modèles:'))
+            self.stdout.write(self.style.WARNING('\n   Modeles:'))
             for model_name, info in summary['models'].items():
                 self.stdout.write(
                     f"   - {model_name} ({info['app']}): "
-                    f"{info['properties']} propriétés, {info['navigation_properties']} nav properties"
+                    f"{info['properties']} proprietes, {info['navigation_properties']} nav properties"
                 )
 
             # Afficher le contenu si demandé
             if should_print:
                 self.stdout.write(
-                    self.style.WARNING('\n📄 Contenu du schéma:\n')
+                    self.style.WARNING('\n[SCHEMA]:\n')
                 )
                 self.stdout.write(metadata_content)
 
         except Exception as e:
             raise CommandError(
-                self.style.ERROR(f'❌ Erreur lors de la génération: {str(e)}')
+                self.style.ERROR(f'[ERREUR] Erreur lors de la generation: {str(e)}')
             )
