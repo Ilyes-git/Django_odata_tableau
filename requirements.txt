@@ -1,9 +1,10 @@
+django==5.2.8
 djangorestframework==3.16.1
 drf-flex-fields==1.0.2
 
 
 # Testing dependencies
-pytest==8.4.2
+pytest==9.0.1
 pytest-django==4.11.1
 pytest-cov==7.0.0
-faker==37.12.0
+faker==38.0.0

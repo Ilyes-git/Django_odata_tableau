@@ -38,3 +38,4 @@ Thumbs.db
 *.tmp
 .temp/
 
+odata_metadata.xml
