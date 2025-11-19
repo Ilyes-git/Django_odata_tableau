@@ -13,16 +13,19 @@ Options:
     --format: Format de sortie: 'xml' ou 'json' (défaut: xml)
 """
 
-import os
 import json
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
 
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django.db import models as django_models
-from django.db.models.fields.related import ForeignKey, ManyToManyField
+from django.db.models.fields.related import ForeignKey, ManyToManyField, OneToOneField
+from django.db.models.fields.reverse_related import (
+    ForeignObjectRel, OneToOneRel, ManyToOneRel, ManyToManyRel
+)
+
 
 
 class ODataMetadataGenerator:
@@ -79,7 +82,8 @@ class ODataMetadataGenerator:
         self.include_auth = include_auth
         self.models: Dict = {}
         self.entity_types: Dict = {}
-        self.associations: List[Tuple] = []
+        self.relationships: List[Tuple] = []  # (model, fk_field, related_model)
+        self.processed_relationships: Set[str] = set()  # Pour éviter les doublons
 
     def get_odata_type(self, field) -> str:
         """
@@ -116,8 +120,8 @@ class ODataMetadataGenerator:
                 self.entity_types[model.__name__] = {
                     'fields': [],
                     'key': None,
-                    'relationships': [],
-                    'app_label': model._meta.app_label
+                    'app_label': model._meta.app_label,
+                    'navigation_properties': []
                 }
 
     def process_model_fields(self):
@@ -126,7 +130,7 @@ class ODataMetadataGenerator:
             entity = self.entity_types[model_name]
 
             for field in model._meta.get_fields():
-                # Ignorer les champs Many-to-Many (pour simplifier)
+                # Ignorer les champs Many-to-Many
                 if isinstance(field, ManyToManyField):
                     continue
 
@@ -143,27 +147,49 @@ class ODataMetadataGenerator:
                         'max_length': None
                     })
 
-                # Traiter les ForeignKey
-                elif isinstance(field, ForeignKey):
+                # Traiter les ForeignKey et OneToOneField
+                elif isinstance(field, (ForeignKey, OneToOneField)):
                     related_model = field.related_model.__name__
                     if related_model in self.models:
-                        entity['relationships'].append({
-                            'name': field.name,
-                            'type': related_model,
-                            'multiplicity': 'ZeroOrOne'
-                        })
-                        # Ajouter aussi la propriété de la clé étrangère
+                        fk_field = f"{field.name}"
                         entity['fields'].append({
-                            'name': f"{field.name}",
+                            'name': fk_field,
                             'type': 'Edm.Int32',
-                            'nullable': True,
+                            'nullable': getattr(field, 'null', True),
                             'is_key': False,
                             'max_length': None
                         })
-                        self.associations.append((model_name, related_model, field.name))
+
+                        # Créer une entrée de relationship
+                        rel_info = {
+                            'name': field.name,
+                            'type': related_model,
+                            'fk_field': fk_field,
+                            'is_one_to_one': isinstance(field, OneToOneField),
+                            'is_collection': False
+                        }
+                        entity['navigation_properties'].append(rel_info)
+                        self.relationships.append((model_name, field.name, related_model))
+
+                # Traiter les relations inverses (OneToOneRel, ManyToOneRel)
+                elif isinstance(field, (OneToOneRel, ManyToOneRel)):
+                    related_model = field.related_model.__name__
+                    if related_model in self.models:
+                        # Créer une navigation property pour la relation inverse
+                        # IMPORTANT: Vérifier OneToOneRel en premier car il hérite de ManyToOneRel
+                        is_one_to_one_rel = isinstance(field, OneToOneRel)
+
+                        rel_info = {
+                            'name': field.name,  # ex: 'header', 'loads'
+                            'type': related_model,
+                            'fk_field': None,  # Pas de FK sur ce modèle
+                            'is_one_to_one': is_one_to_one_rel,
+                            'is_collection': not is_one_to_one_rel  # False pour OneToOneRel, True pour ManyToOneRel
+                        }
+                        entity['navigation_properties'].append(rel_info)
 
                 # Traiter les champs normaux
-                elif not field.many_to_one and not field.one_to_many:
+                elif not field.many_to_one and not field.one_to_many and not isinstance(field, (ManyToManyRel, ForeignObjectRel)):
                     if hasattr(field, 'name') and field.name not in ['id']:
                         max_length = getattr(field, 'max_length', None)
                         entity['fields'].append({
@@ -208,8 +234,6 @@ class ODataMetadataGenerator:
             entity = self.entity_types[model_name]
             self._add_entity_type(schema, model_name, entity)
 
-        # Ajouter les associations
-        self._add_associations(schema)
 
         # Ajouter le conteneur de service
         self._add_entity_container(schema)
@@ -219,35 +243,128 @@ class ODataMetadataGenerator:
 
     def generate_json_schema(self) -> str:
         """
-        Générer un schéma JSON alternatif.
+        Générer un schéma JSON OData v4.0 conforme à la spécification officielle CSDL JSON.
+
+        Référence: https://docs.oasis-open.org/odata/odata-csdl-json/v4.01/odata-csdl-json-v4.01.html
 
         Returns:
-            Le schéma en format JSON
+            Le schéma en format JSON OData v4.0
         """
+        from my_app.views import ODATA_MODELS_REGISTRY
+
+        # Créer un mapping modèle -> entity_set_name depuis le registry
+        model_to_entity_set = {}
+        for entity_set_name, entry in ODATA_MODELS_REGISTRY.items():
+            model_name = entry.__name__
+            model_to_entity_set[model_name] = entity_set_name
+
+        # Structure racine conforme OData v4.0 CSDL JSON
         schema = {
-            'version': '4.0',
-            'namespace': self.namespace,
-            'service_name': self.service_name,
-            'entity_types': {},
-            'associations': []
+            "$Version": "4.0",
+            "$EntityContainer": f"{self.namespace}.{self.service_name}",
+            f"{self.namespace}": {
+                "$Alias": "self"
+            }
         }
+
+        # Ajouter les EntityTypes
+        namespace_def = schema[self.namespace]
 
         for model_name in sorted(self.entity_types.keys()):
             entity = self.entity_types[model_name]
-            schema['entity_types'][model_name] = {
-                'key': entity['key'],
-                'properties': entity['fields'],
-                'relationships': entity['relationships']
+
+            entity_type_def = {
+                "$Kind": "EntityType"
             }
 
-        schema['associations'] = [
-            {
-                'from_entity': from_entity,
-                'to_entity': to_entity,
-                'property': prop
+            # Ajouter la clé primaire
+            if entity['key']:
+                entity_type_def["$Key"] = [entity['key']]
+
+            # Ajouter les propriétés normales (non-navigation)
+            for field in entity['fields']:
+                property_def = {
+                    "$Type": field['type']
+                }
+
+                # Nullable
+                if not field['nullable']:
+                    property_def["$Nullable"] = False
+
+                # MaxLength pour les chaînes
+                if field['max_length'] and field['type'] == 'Edm.String':
+                    property_def["$MaxLength"] = field['max_length']
+
+                entity_type_def[field['name']] = property_def
+
+            # Ajouter les NavigationProperties
+            for nav_prop in entity['navigation_properties']:
+                nav_def = {
+                    "$Kind": "NavigationProperty",
+                }
+
+                # Si c'est une collection (relation one-to-many inverse)
+                if nav_prop.get('is_collection', False):
+                    nav_def["$Collection"] = True
+                    nav_def["$Type"] = f"self.{nav_prop['type']}"
+                else:
+                    nav_def["$Type"] = f"self.{nav_prop['type']}"
+
+                # Ajouter Partner si trouvé
+                partner_name = self._find_partner_name(model_name, nav_prop['type'], nav_prop['name'])
+                if partner_name:
+                    nav_def["$Partner"] = partner_name
+
+                # Ajouter ReferentialConstraint seulement si cette entité possède la FK
+                if nav_prop.get('fk_field'):
+                    related_key = self._get_related_model_key(nav_prop['type'])
+                    nav_def["$ReferentialConstraint"] = {
+                        nav_prop['fk_field']: related_key
+                    }
+
+                entity_type_def[nav_prop['name']] = nav_def
+
+            namespace_def[model_name] = entity_type_def
+
+        # Ajouter l'EntityContainer
+        container_def = {
+            "$Kind": "EntityContainer"
+        }
+
+        for model_name in sorted(self.models.keys()):
+            # Utiliser le registry pour obtenir le nom d'entity set correct
+            if model_name in model_to_entity_set:
+                entity_set_name = model_to_entity_set[model_name]
+            else:
+                # Fallback: pluralisation simple
+                entity_set_name = f"{model_name}s"
+
+            entity_set_def = {
+                "$Collection": True,
+                "$Type": f"self.{model_name}"
             }
-            for from_entity, to_entity, prop in self.associations
-        ]
+
+            # Ajouter les NavigationPropertyBindings
+            entity = self.entity_types.get(model_name)
+            if entity and entity['navigation_properties']:
+                bindings = {}
+                for nav_prop in entity['navigation_properties']:
+                    related_model = nav_prop['type']
+                    prop_name = nav_prop['name']
+
+                    # Obtenir le nom du related entity set
+                    related_entity_set = model_to_entity_set.get(related_model)
+                    if not related_entity_set:
+                        related_entity_set = f"{related_model}s"
+
+                    bindings[prop_name] = related_entity_set
+
+                if bindings:
+                    entity_set_def["$NavigationPropertyBinding"] = bindings
+
+            container_def[entity_set_name] = entity_set_def
+
+        namespace_def[self.service_name] = container_def
 
         return json.dumps(schema, indent=2, ensure_ascii=False)
 
@@ -282,74 +399,35 @@ class ODataMetadataGenerator:
 
             ET.SubElement(entity_type, 'Property', attrs)
 
-        # Ajouter les propriétés de navigation
-        for rel in entity['relationships']:
+        # Ajouter les NavigationProperty OData V4
+        for nav_prop in entity['navigation_properties']:
             nav_attrs = {
-                'Name': rel['name'],
-                'Type': f"{self.namespace}.{rel['type']}",
-                'Relationship': f"{self.namespace}.{model_name}_{rel['type']}_{rel['name']}"
+                'Name': nav_prop['name'],
+                'Type': f"{self.namespace}.{nav_prop['type']}"
             }
-            ET.SubElement(entity_type, 'NavigationProperty', nav_attrs)
 
-    def _add_associations(self, parent_element):
-        """Ajouter les associations au schéma."""
-        # Garder trace des associations déjà ajoutées
-        added_associations = set()
+            # Ajouter Collection attribute si c'est une collection
+            if nav_prop.get('is_collection', False):
+                nav_attrs['Type'] = f"Collection({self.namespace}.{nav_prop['type']})"
 
-        for model_name, entity in self.entity_types.items():
-            for rel in entity['relationships']:
-                related_model = rel['type']
-                prop_name = rel['name']
+            # Créer la reference Partner inverse
+            related_model_name = nav_prop['type']
+            fk_field = nav_prop['fk_field']
 
-                # Créer un ID unique pour l'association
-                assoc_id = f"{model_name}_{related_model}_{prop_name}"
+            # Essayer de trouver le partenaire inverse (reverse relationship)
+            partner_name = self._find_partner_name(model_name, related_model_name, nav_prop['name'])
+            if partner_name:
+                nav_attrs['Partner'] = partner_name
 
-                if assoc_id not in added_associations:
-                    # Créer l'association
-                    association = ET.SubElement(
-                        parent_element,
-                        'Association',
-                        {
-                            'Name': assoc_id
-                        }
-                    )
+            nav_prop_elem = ET.SubElement(entity_type, 'NavigationProperty', nav_attrs)
 
-                    # End 1: le modèle avec la FK
-                    ET.SubElement(
-                        association,
-                        'End',
-                        {
-                            'Type': f"{self.namespace}.{model_name}",
-                            'Multiplicity': '1',
-                            'Role': f"{model_name}_Role"
-                        }
-                    )
+            # Ajouter ReferentialConstraint SEULEMENT si ce modèle possède la FK
+            if fk_field:
+                ref_constraint = ET.SubElement(nav_prop_elem, 'ReferentialConstraint')
+                ref_constraint.set('Property', fk_field)
+                ref_constraint.set('ReferencedProperty', self._get_related_model_key(related_model_name))
 
-                    # End 2: le modèle référencé
-                    ET.SubElement(
-                        association,
-                        'End',
-                        {
-                            'Type': f"{self.namespace}.{related_model}",
-                            'Multiplicity': '0..1',
-                            'Role': f"{related_model}_Role"
-                        }
-                    )
 
-                    # ReferentialConstraint
-                    ref_constraint = ET.SubElement(association, 'ReferentialConstraint')
-                    ET.SubElement(
-                        ref_constraint,
-                        'Principal',
-                        {'Role': f"{related_model}_Role"}
-                    )
-                    ET.SubElement(
-                        ref_constraint,
-                        'Dependent',
-                        {'Role': f"{model_name}_Role", 'Property': f"{prop_name}_id"}
-                    )
-
-                    added_associations.add(assoc_id)
 
     def _add_entity_container(self, parent_element):
         """Ajouter le conteneur de service."""
@@ -385,12 +463,12 @@ class ODataMetadataGenerator:
                 }
             )
 
-            # Ajouter les navigation property bindings
+            # Ajouter les NavigationPropertyBinding
             entity = self.entity_types.get(model_name)
             if entity:
-                for rel in entity['relationships']:
-                    related_model = rel['type']
-                    prop_name = rel['name']
+                for nav_prop in entity['navigation_properties']:
+                    related_model = nav_prop['type']
+                    prop_name = nav_prop['name']
 
                     # Obtenir le nom du related entity set
                     related_entity_set = model_to_entity_set.get(related_model)
@@ -407,11 +485,38 @@ class ODataMetadataGenerator:
                         }
                     )
 
+
     def _prettify_xml(self, elem) -> str:
         """Formater le XML pour le rendre lisible."""
         rough_string = ET.tostring(elem, encoding='unicode')
         reparsed = minidom.parseString(rough_string)
         return reparsed.toprettyxml(indent="  ")
+
+    def _find_partner_name(self, model_name: str, related_model_name: str, fk_field_name: str):
+        """
+        Trouver le nom du partenaire inverse (reverse relationship).
+
+        Ex: Si DprIndex a une FK vers Header, on cherche la relationship
+        inverse de Header vers DprIndex
+        """
+        related_entity = self.entity_types.get(related_model_name)
+        if not related_entity:
+            return None
+
+        # Chercher dans les navigation properties du modèle lié
+        for nav_prop in related_entity['navigation_properties']:
+            # Le partenaire devrait référencer le modèle courant
+            if nav_prop['type'] == model_name:
+                return nav_prop['name']
+
+        return None
+
+    def _get_related_model_key(self, model_name: str) -> str:
+        """Retourner la clé primaire d'un modèle."""
+        entity = self.entity_types.get(model_name)
+        if entity and entity['key']:
+            return entity['key']
+        return 'id'
 
     def generate(self, output_format: str = 'xml') -> str:
         """
@@ -436,11 +541,11 @@ class ODataMetadataGenerator:
         return {
             'models_count': len(self.models),
             'entity_types_count': len(self.entity_types),
-            'associations_count': len(self.associations),
+            'relationships_count': len(self.relationships),
             'models': {
                 model_name: {
                     'properties': len(entity['fields']),
-                    'relationships': len(entity['relationships']),
+                    'navigation_properties': len(entity['navigation_properties']),
                     'app': entity['app_label']
                 }
                 for model_name, entity in sorted(self.entity_types.items())
@@ -530,13 +635,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('\n📊 Résumé:'))
             self.stdout.write(f"   - Modèles trouvés: {summary['models_count']}")
             self.stdout.write(f"   - Types d'entités: {summary['entity_types_count']}")
-            self.stdout.write(f"   - Associations: {summary['associations_count']}")
+            self.stdout.write(f"   - Relationships: {summary['relationships_count']}")
 
             self.stdout.write(self.style.WARNING('\n   Modèles:'))
             for model_name, info in summary['models'].items():
                 self.stdout.write(
                     f"   - {model_name} ({info['app']}): "
-                    f"{info['properties']} propriétés, {info['relationships']} relations"
+                    f"{info['properties']} propriétés, {info['navigation_properties']} nav properties"
                 )
 
             # Afficher le contenu si demandé
