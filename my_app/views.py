@@ -2,6 +2,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views import View
 from django.db.models import Q
 from django.conf import settings
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 import importlib
@@ -209,6 +210,7 @@ class ODataFilterParser:
 class ODataModelViewSet(ModelViewSet):
     """ViewSet générique pour OData - s'adapte dynamiquement au registry"""
 
+    permission_classes = [AllowAny]
     queryset = None
     serializer_class = None
     entity_set_name = None
@@ -493,12 +495,33 @@ class ODataModelViewSet(ModelViewSet):
         return queryset
 
     def paginate_queryset(self, queryset):
-        """Gère la pagination avec $skip et $top"""
-        skip = int(self.request.GET.get("$skip", 0))
-        top = int(self.request.GET.get("$top", 50))
+        """
+        By default: no pagination.
+        Pagination activates only if $top is provided.
+        """
+
+        top = self.request.GET.get("$top")
+        skip = self.request.GET.get("$skip", 0)
+
+        # -----------------------------------------
+        # No pagination if $top is not provided
+        # -----------------------------------------
+        if top is None:
+            return queryset
+
+        # -----------------------------------------
+        # Activate pagination only now
+        # -----------------------------------------
+        try:
+            top = int(top)
+            skip = int(skip)
+        except ValueError:
+            # Fallback: no pagination if invalid params
+            return queryset
 
         if skip > 0:
             queryset = queryset[skip:]
+
         if top > 0:
             queryset = queryset[:top]
 
@@ -671,7 +694,7 @@ class ODataServiceDocumentView(View):
     def get(self, request, *args, **kwargs):
         """Retourner le service document OData"""
         try:
-            base_url = request.build_absolute_uri("/odata/").rstrip("/")
+            base_url = request.build_absolute_uri().rstrip('/')
 
             entity_sets = []
             for entity_set_name, entry in ODATA_MODELS_REGISTRY.items():
