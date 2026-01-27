@@ -357,88 +357,88 @@
         </NavigationProperty>
       </EntityType>
       <EntityContainer Name="Container">
-        <EntitySet Name="authors" EntityType="Odata.Author">
-          <NavigationPropertyBinding Path="books" Target="books"/>
+        <EntitySet Name="Authors" EntityType="Odata.Author">
+          <NavigationPropertyBinding Path="books" Target="Books"/>
         </EntitySet>
-        <EntitySet Name="books" EntityType="Odata.Book">
-          <NavigationPropertyBinding Path="author" Target="authors"/>
+        <EntitySet Name="Books" EntityType="Odata.Book">
+          <NavigationPropertyBinding Path="author" Target="Authors"/>
         </EntitySet>
-        <EntitySet Name="cars" EntityType="Odata.Car">
-          <NavigationPropertyBinding Path="owner" Target="people"/>
+        <EntitySet Name="Cars" EntityType="Odata.Car">
+          <NavigationPropertyBinding Path="owner" Target="People"/>
         </EntitySet>
-        <EntitySet Name="folders" EntityType="Odata.Folder">
-          <NavigationPropertyBinding Path="subfolders" Target="folders"/>
-          <NavigationPropertyBinding Path="maps" Target="maps"/>
-          <NavigationPropertyBinding Path="parent" Target="folders"/>
+        <EntitySet Name="Folders" EntityType="Odata.Folder">
+          <NavigationPropertyBinding Path="subfolders" Target="Folders"/>
+          <NavigationPropertyBinding Path="maps" Target="Maps"/>
+          <NavigationPropertyBinding Path="parent" Target="Folders"/>
         </EntitySet>
         <EntitySet Name="LogEntrys" EntityType="Odata.LogEntry"/>
-        <EntitySet Name="maps" EntityType="Odata.Map">
-          <NavigationPropertyBinding Path="folder" Target="folders"/>
+        <EntitySet Name="Maps" EntityType="Odata.Map">
+          <NavigationPropertyBinding Path="folder" Target="Folders"/>
         </EntitySet>
-        <EntitySet Name="operational_parameters" EntityType="Odata.OperationalParameter">
-          <NavigationPropertyBinding Path="ship_class" Target="ship_classes"/>
-          <NavigationPropertyBinding Path="purpose" Target="purposes"/>
-          <NavigationPropertyBinding Path="task" Target="tasks"/>
+        <EntitySet Name="OperationalParameters" EntityType="Odata.OperationalParameter">
+          <NavigationPropertyBinding Path="ship_class" Target="ShipClasses"/>
+          <NavigationPropertyBinding Path="purpose" Target="Purposes"/>
+          <NavigationPropertyBinding Path="task" Target="Tasks"/>
         </EntitySet>
-        <EntitySet Name="organisations" EntityType="Odata.Organisation">
-          <NavigationPropertyBinding Path="vesselstakeholder" Target="vessel_stakeholders"/>
+        <EntitySet Name="Organisations" EntityType="Odata.Organisation">
+          <NavigationPropertyBinding Path="vesselstakeholder" Target="VesselStakeholders"/>
         </EntitySet>
-        <EntitySet Name="people" EntityType="Odata.Person">
-          <NavigationPropertyBinding Path="cars" Target="cars"/>
+        <EntitySet Name="People" EntityType="Odata.Person">
+          <NavigationPropertyBinding Path="cars" Target="Cars"/>
         </EntitySet>
-        <EntitySet Name="ports" EntityType="Odata.Port">
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+        <EntitySet Name="Ports" EntityType="Odata.Port">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
         </EntitySet>
-        <EntitySet Name="products" EntityType="Odata.Product"/>
-        <EntitySet Name="projects" EntityType="Odata.Project">
-          <NavigationPropertyBinding Path="vesselprojecthistory" Target="vessel_project_histories"/>
+        <EntitySet Name="Products" EntityType="Odata.Product"/>
+        <EntitySet Name="Projects" EntityType="Odata.Project">
+          <NavigationPropertyBinding Path="vesselprojecthistory" Target="VesselProjectHistories"/>
         </EntitySet>
-        <EntitySet Name="purposes" EntityType="Odata.Purpose">
-          <NavigationPropertyBinding Path="vesselpurpose" Target="vessel_purposes"/>
-          <NavigationPropertyBinding Path="operationalparameter" Target="operational_parameters"/>
+        <EntitySet Name="Purposes" EntityType="Odata.Purpose">
+          <NavigationPropertyBinding Path="vesselpurpose" Target="VesselPurposes"/>
+          <NavigationPropertyBinding Path="operationalparameter" Target="OperationalParameters"/>
         </EntitySet>
-        <EntitySet Name="roles" EntityType="Odata.Role">
-          <NavigationPropertyBinding Path="vesselstakeholder" Target="vessel_stakeholders"/>
+        <EntitySet Name="Roles" EntityType="Odata.Role">
+          <NavigationPropertyBinding Path="vesselstakeholder" Target="VesselStakeholders"/>
         </EntitySet>
         <EntitySet Name="Sessions" EntityType="Odata.Session"/>
-        <EntitySet Name="ship_classes" EntityType="Odata.ShipClass">
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
-          <NavigationPropertyBinding Path="operational_parameters" Target="operational_parameters"/>
+        <EntitySet Name="ShipClasses" EntityType="Odata.ShipClass">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="operational_parameters" Target="OperationalParameters"/>
         </EntitySet>
-        <EntitySet Name="tasks" EntityType="Odata.Task">
-          <NavigationPropertyBinding Path="vesselqualification" Target="vessel_qualifications"/>
-          <NavigationPropertyBinding Path="operationalparameter" Target="operational_parameters"/>
-          <NavigationPropertyBinding Path="vesselprojecthistory" Target="vessel_project_histories"/>
+        <EntitySet Name="Tasks" EntityType="Odata.Task">
+          <NavigationPropertyBinding Path="vesselqualification" Target="VesselQualifications"/>
+          <NavigationPropertyBinding Path="operationalparameter" Target="OperationalParameters"/>
+          <NavigationPropertyBinding Path="vesselprojecthistory" Target="VesselProjectHistories"/>
         </EntitySet>
-        <EntitySet Name="vessels" EntityType="Odata.Vessel">
-          <NavigationPropertyBinding Path="vesselqualification" Target="vessel_qualifications"/>
-          <NavigationPropertyBinding Path="vesselpurpose" Target="vessel_purposes"/>
-          <NavigationPropertyBinding Path="vesselstakeholder" Target="vessel_stakeholders"/>
-          <NavigationPropertyBinding Path="vesselflagmmsihistory" Target="vessel_flag_mmsi_histories"/>
-          <NavigationPropertyBinding Path="vesselprojecthistory" Target="vessel_project_histories"/>
-          <NavigationPropertyBinding Path="ship_class" Target="ship_classes"/>
-          <NavigationPropertyBinding Path="port" Target="ports"/>
+        <EntitySet Name="Vessels" EntityType="Odata.Vessel">
+          <NavigationPropertyBinding Path="vesselqualification" Target="VesselQualifications"/>
+          <NavigationPropertyBinding Path="vesselpurpose" Target="VesselPurposes"/>
+          <NavigationPropertyBinding Path="vesselstakeholder" Target="VesselStakeholders"/>
+          <NavigationPropertyBinding Path="vesselflagmmsihistory" Target="VesselFlagMmsiHistories"/>
+          <NavigationPropertyBinding Path="vesselprojecthistory" Target="VesselProjectHistories"/>
+          <NavigationPropertyBinding Path="ship_class" Target="ShipClasses"/>
+          <NavigationPropertyBinding Path="port" Target="Ports"/>
         </EntitySet>
-        <EntitySet Name="vessel_flag_mmsi_histories" EntityType="Odata.VesselFlagMmsiHistory">
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+        <EntitySet Name="VesselFlagMmsiHistories" EntityType="Odata.VesselFlagMmsiHistory">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
         </EntitySet>
-        <EntitySet Name="vessel_project_histories" EntityType="Odata.VesselProjectHistory">
-          <NavigationPropertyBinding Path="project" Target="projects"/>
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
-          <NavigationPropertyBinding Path="task" Target="tasks"/>
+        <EntitySet Name="VesselProjectHistories" EntityType="Odata.VesselProjectHistory">
+          <NavigationPropertyBinding Path="project" Target="Projects"/>
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="task" Target="Tasks"/>
         </EntitySet>
-        <EntitySet Name="vessel_purposes" EntityType="Odata.VesselPurpose">
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
-          <NavigationPropertyBinding Path="purpose" Target="purposes"/>
+        <EntitySet Name="VesselPurposes" EntityType="Odata.VesselPurpose">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="purpose" Target="Purposes"/>
         </EntitySet>
-        <EntitySet Name="vessel_qualifications" EntityType="Odata.VesselQualification">
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
-          <NavigationPropertyBinding Path="task" Target="tasks"/>
+        <EntitySet Name="VesselQualifications" EntityType="Odata.VesselQualification">
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
+          <NavigationPropertyBinding Path="task" Target="Tasks"/>
         </EntitySet>
-        <EntitySet Name="vessel_stakeholders" EntityType="Odata.VesselStakeholder">
-          <NavigationPropertyBinding Path="organisation" Target="organisations"/>
-          <NavigationPropertyBinding Path="role" Target="roles"/>
-          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+        <EntitySet Name="VesselStakeholders" EntityType="Odata.VesselStakeholder">
+          <NavigationPropertyBinding Path="organisation" Target="Organisations"/>
+          <NavigationPropertyBinding Path="role" Target="Roles"/>
+          <NavigationPropertyBinding Path="vessel" Target="Vessels"/>
         </EntitySet>
       </EntityContainer>
     </Schema>

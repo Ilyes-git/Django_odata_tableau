@@ -31,20 +31,27 @@ class ODataRouter:
             # Vérifier si un ViewSet personnalisé est fourni
             # entry peut être soit un Model, soit un dict {'model': Model, 'viewset': CustomViewSet}
             if isinstance(entry, dict):
-                model = entry.get('model')
                 custom_viewset = entry.get('viewset')
             else:
-                model = entry
                 custom_viewset = None
 
             if custom_viewset:
-                # Utiliser le ViewSet personnalisé fourni
-                DynamicViewSet = custom_viewset
+                # Créer une sous-classe du ViewSet personnalisé avec entity_set_name injecté
+                class_name = f"{entity_set_name}ViewSet"
+                # On crée simplement une sous-classe pour injecter entity_set_name
+                DynamicViewSet = type(
+                    class_name,
+                    (custom_viewset,),
+                    {'entity_set_name': entity_set_name}
+                )
             else:
                 # Créer un ViewSet dynamique pour cet entity set
                 class_name = f"{entity_set_name}ViewSet"
-                # Créer une classe ViewSet dynamiquement
-                DynamicViewSet = type(class_name, (ODataModelViewSet,), {'entity_set_name': entity_set_name})
+                DynamicViewSet = type(
+                    class_name,
+                    (ODataModelViewSet,),
+                    {'entity_set_name': entity_set_name}
+                )
 
             # Endpoint collection: /EntitySet (utilise entity_set_name comme URL)
             urlpatterns.append(

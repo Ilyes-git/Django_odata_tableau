@@ -4,11 +4,11 @@ import inflection
 
 def model_to_endpoint(model_name: str) -> str:
     """
-    Convert CamelCase model name to a PEP8 pluralized snake_case endpoint.
+    Convert model name to a PascalCase pluralized endpoint.
+    Example: Person -> People, Car -> Cars, VesselQualification -> VesselQualifications
     """
-    snake = inflection.underscore(model_name)
-    plural = inflection.pluralize(snake)
-    return plural.lower()
+    # Pluraliser le nom du modèle directement (garde le PascalCase)
+    return inflection.pluralize(model_name)
 
 
 def get_dynamic_odata_registry(

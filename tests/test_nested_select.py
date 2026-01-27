@@ -1,7 +1,7 @@
 """
 Tests pour vérifier que la sélection imbriquée dans $expand fonctionne correctement.
 
-Test de : /odata/folders?expand=parent($select=id)
+Test de : /odata/Folders?expand=parent($select=id)
 """
 import pytest
 from django.test import TestCase
@@ -46,10 +46,10 @@ class TestNestedSelect(TestCase):
     def test_expand_parent_without_select(self):
         """
         Test 1: Tester que $expand=parent retourne tous les champs du parent
-        GET /odata/folders?$expand=parent
+        GET /odata/Folders?$expand=parent
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent",
+            "/odata/Folders?$expand=parent",
             format="json"
         )
 
@@ -87,12 +87,12 @@ class TestNestedSelect(TestCase):
     def test_expand_parent_with_select_id_only(self):
         """
         Test 2: Tester que $expand=parent($select=id) retourne UNIQUEMENT le champ id du parent
-        GET /odata/folders?$expand=parent($select=id)
+        GET /odata/Folders?$expand=parent($select=id)
 
         Ceci est le test critique pour vérifier que la nested selection fonctionne !
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent($select=id)",
+            "/odata/Folders?$expand=parent($select=id)",
             format="json"
         )
 
@@ -136,10 +136,10 @@ class TestNestedSelect(TestCase):
     def test_expand_parent_with_select_multiple_fields(self):
         """
         Test 3: Tester que $expand=parent($select=id,name) retourne UNIQUEMENT les champs id et name
-        GET /odata/folders?$expand=parent($select=id,name)
+        GET /odata/Folders?$expand=parent($select=id,name)
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent($select=id,name)",
+            "/odata/Folders?$expand=parent($select=id,name)",
             format="json"
         )
 
@@ -179,10 +179,10 @@ class TestNestedSelect(TestCase):
     def test_expand_with_select_on_main_resource(self):
         """
         Test 4: Tester que $select=id,name,parent fonctionne avec $expand=parent
-        GET /odata/folders?$select=id,name,parent&$expand=parent($select=id)
+        GET /odata/Folders?$select=id,name,parent&$expand=parent($select=id)
         """
         response = self.client.get(
-            "/odata/folders?$select=id,name,parent&$expand=parent($select=id)",
+            "/odata/Folders?$select=id,name,parent&$expand=parent($select=id)",
             format="json"
         )
 
@@ -215,7 +215,7 @@ class TestNestedSelect(TestCase):
         Test 5: Tester que quand parent n'a pas de parent, il est null ou absent
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent($select=id)",
+            "/odata/Folders?$expand=parent($select=id)",
             format="json"
         )
 
@@ -240,10 +240,10 @@ class TestNestedSelect(TestCase):
     def test_expand_parent_with_invalid_field_in_select(self):
         """
         Test 6: Tester le comportement avec un champ invalide dans $select
-        GET /odata/folders?$expand=parent($select=id,nonexistent_field)
+        GET /odata/Folders?$expand=parent($select=id,nonexistent_field)
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent($select=id,nonexistent_field)",
+            "/odata/Folders?$expand=parent($select=id,nonexistent_field)",
             format="json"
         )
 
@@ -268,14 +268,14 @@ class TestNestedSelect(TestCase):
     def test_deeply_nested_expand_parent_of_parent(self):
         """
         Test 7: Tester $expand=parent retourne le parent avec tous les champs
-        GET /odata/folders?$expand=parent
+        GET /odata/Folders?$expand=parent
 
         Note: Le double nested expand $expand=parent($expand=parent($select=id))
         est un cas très avancé qui peut ne pas être entièrement supporté.
         Ce test se concentre sur l'expand simple du parent.
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent",
+            "/odata/Folders?$expand=parent",
             format="json"
         )
 
@@ -309,7 +309,7 @@ class TestNestedSelect(TestCase):
         Test 8: Vérifier la structure complète de la réponse
         """
         response = self.client.get(
-            "/odata/folders?$expand=parent($select=id)&$top=1",
+            "/odata/Folders?$expand=parent($select=id)&$top=1",
             format="json"
         )
 

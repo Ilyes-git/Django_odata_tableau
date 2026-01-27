@@ -41,7 +41,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_eq_operator(self):
         """Test l'opérateur eq - égalité"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=first_name eq 'John')")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=first_name eq 'John')")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -53,7 +53,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_ne_operator(self):
         """Test l'opérateur ne - non égal"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=first_name ne 'John')")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=first_name ne 'John')")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -67,7 +67,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_startswith_operator(self):
         """Test l'opérateur startswith avec syntaxe OData"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=startswith(first_name,'J'))")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=startswith(first_name,'J'))")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -79,7 +79,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_endswith_operator(self):
         """Test l'opérateur endswith avec syntaxe OData"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=endswith(first_name,'n'))")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=endswith(first_name,'n'))")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -90,7 +90,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_contains_operator(self):
         """Test l'opérateur contains avec syntaxe OData"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=contains(first_name,'oh'))")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=contains(first_name,'oh'))")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -106,7 +106,7 @@ class TestNestedFilterBasic(TestCase):
         """Test l'opérateur gt (greater than) sur une année"""
         # Note: On filtre sur l'owner (Person), pas sur Car
         # Donc on teste avec birth_date
-        response = self.client.get("/odata/cars?$expand=owner($filter=birth_date gt '1980-01-01')")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=birth_date gt '1980-01-01')")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -115,7 +115,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_lt_operator(self):
         """Test l'opérateur lt (less than)"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=birth_date lt '1980-01-01')")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=birth_date lt '1980-01-01')")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -125,7 +125,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_le_operator(self):
         """Test l'opérateur le (less or equal)"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=birth_date le '1980-01-15')")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=birth_date le '1980-01-15')")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -134,7 +134,7 @@ class TestNestedFilterBasic(TestCase):
 
     def test_filter_ge_operator(self):
         """Test l'opérateur ge (greater or equal)"""
-        response = self.client.get("/odata/cars?$expand=owner($filter=birth_date ge '1980-01-15')")
+        response = self.client.get("/odata/Cars?$expand=owner($filter=birth_date ge '1980-01-15')")
         data = json.loads(response.content)
 
         assert response.status_code == 200
@@ -157,7 +157,7 @@ class TestNestedFilterCombinedWithSelect(TestCase):
     def test_filter_with_select_nested(self):
         """Test filtre + select imbriqués"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($select=first_name,$filter=first_name eq 'John')"
+            "/odata/Cars?$expand=owner($select=first_name,$filter=first_name eq 'John')"
         )
         data = json.loads(response.content)
 
@@ -174,7 +174,7 @@ class TestNestedFilterCombinedWithSelect(TestCase):
     def test_filter_with_select_multiple_fields(self):
         """Test filtre + select avec plusieurs champs"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($select=first_name,last_name,$filter=startswith(first_name,'J'))"
+            "/odata/Cars?$expand=owner($select=first_name,last_name,$filter=startswith(first_name,'J'))"
         )
         data = json.loads(response.content)
 
@@ -189,7 +189,7 @@ class TestNestedFilterCombinedWithSelect(TestCase):
     def test_filter_without_select_has_all_fields(self):
         """Test que sans $select, tous les champs sont retournés"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')"
         )
         data = json.loads(response.content)
 
@@ -223,7 +223,7 @@ class TestNestedFilterWithPagination(TestCase):
         il change seulement les données de l'owner nested.
         """
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')&$skip=2"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')&$skip=2"
         )
         data = json.loads(response.content)
 
@@ -241,7 +241,7 @@ class TestNestedFilterWithPagination(TestCase):
     def test_filter_with_top(self):
         """Test filtre + $top"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')&$top=2"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')&$top=2"
         )
         data = json.loads(response.content)
 
@@ -252,7 +252,7 @@ class TestNestedFilterWithPagination(TestCase):
     def test_filter_with_skip_and_top(self):
         """Test filtre + $skip + $top"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')&$skip=1&$top=2"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')&$skip=1&$top=2"
         )
         data = json.loads(response.content)
 
@@ -277,7 +277,7 @@ class TestNestedFilterWithOrderBy(TestCase):
     def test_filter_with_orderby(self):
         """Test filtre + $orderby"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')&$orderby=year desc"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')&$orderby=year desc"
         )
         data = json.loads(response.content)
 
@@ -307,7 +307,7 @@ class TestNestedFilterMultipleConditions(TestCase):
     def test_filter_with_multiple_or_conditions(self):
         """Test filtre avec plusieurs conditions OR"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John' or first_name eq 'Jane')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John' or first_name eq 'Jane')"
         )
         data = json.loads(response.content)
 
@@ -320,7 +320,7 @@ class TestNestedFilterMultipleConditions(TestCase):
     def test_filter_with_multiple_and_conditions(self):
         """Test filtre avec plusieurs conditions AND"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John' and last_name eq 'Doe')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John' and last_name eq 'Doe')"
         )
         data = json.loads(response.content)
 
@@ -344,7 +344,7 @@ class TestNestedFilterEdgeCases(TestCase):
     def test_filter_returns_empty_result(self):
         """Test quand le filtre ne retourne aucun résultat"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'NonExistent')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'NonExistent')"
         )
         data = json.loads(response.content)
 
@@ -355,7 +355,7 @@ class TestNestedFilterEdgeCases(TestCase):
     def test_filter_with_case_insensitive_comparison(self):
         """Test que la comparaison est case-insensitive pour startswith"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name startswith 'john')"
+            "/odata/Cars?$expand=owner($filter=first_name startswith 'john')"
         )
         data = json.loads(response.content)
 
@@ -370,7 +370,7 @@ class TestNestedFilterEdgeCases(TestCase):
         Car.objects.create(brand='BMW', year=2020, owner=person)
 
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=contains(first_name,'Paul'))"
+            "/odata/Cars?$expand=owner($filter=contains(first_name,'Paul'))"
         )
         data = json.loads(response.content)
 
@@ -381,7 +381,7 @@ class TestNestedFilterEdgeCases(TestCase):
     def test_filter_invalid_syntax_returns_error(self):
         """Test que un filtre syntaxiquement invalide retourne une erreur 400"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name invalid 'John')"
+            "/odata/Cars?$expand=owner($filter=first_name invalid 'John')"
         )
 
         # Doit retourner 400 ou filtrer silencieusement selon l'implémentation
@@ -418,7 +418,7 @@ class TestNestedFilterPerformance(TestCase):
 
         with CaptureQueriesContext(connection) as context:
             response = self.client.get(
-                "/odata/cars?$expand=owner($filter=first_name startswith 'Person')"
+                "/odata/Cars?$expand=owner($filter=first_name startswith 'Person')"
             )
             data = json.loads(response.content)
 
@@ -430,7 +430,7 @@ class TestNestedFilterPerformance(TestCase):
     def test_filter_returns_all_matching_cars(self):
         """Test que le filtre retourne bien toutes les voitures matchantes"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'Person0')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'Person0')"
         )
         data = json.loads(response.content)
 
@@ -452,7 +452,7 @@ class TestNestedFilterResponseFormat(TestCase):
     def test_response_has_required_odata_fields(self):
         """Test que la réponse contient les champs OData requis"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')"
         )
         data = json.loads(response.content)
 
@@ -465,7 +465,7 @@ class TestNestedFilterResponseFormat(TestCase):
     def test_response_items_have_odata_type(self):
         """Test que chaque item a un @odata.type"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')"
         )
         data = json.loads(response.content)
 
@@ -476,7 +476,7 @@ class TestNestedFilterResponseFormat(TestCase):
     def test_nested_owner_is_object_not_array(self):
         """Test que owner est un objet, pas un tableau"""
         response = self.client.get(
-            "/odata/cars?$expand=owner($filter=first_name eq 'John')"
+            "/odata/Cars?$expand=owner($filter=first_name eq 'John')"
         )
         data = json.loads(response.content)
 
@@ -501,7 +501,7 @@ class TestNestedFilterWithMainFilter(TestCase):
     def test_main_filter_and_nested_filter(self):
         """Test filtre principal + filtre imbriqué"""
         response = self.client.get(
-            "/odata/cars?$filter=year gt 2020&$expand=owner($filter=first_name eq 'John')"
+            "/odata/Cars?$filter=year gt 2020&$expand=owner($filter=first_name eq 'John')"
         )
         data = json.loads(response.content)
 
@@ -517,7 +517,7 @@ class TestNestedFilterWithMainFilter(TestCase):
     def test_main_filter_excludes_nested_filter_results(self):
         """Test que le filtre principal s'applique avant le nested filter"""
         response = self.client.get(
-            "/odata/cars?$filter=brand eq 'BMW'&$expand=owner($filter=first_name eq 'Jane')"
+            "/odata/Cars?$filter=brand eq 'BMW'&$expand=owner($filter=first_name eq 'Jane')"
         )
         data = json.loads(response.content)
 

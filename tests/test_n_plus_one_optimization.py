@@ -66,7 +66,7 @@ class TestODataQueryOptimization(TestCase):
         Test SANS expand - devrait faire 1 requête
         """
         with CaptureQueriesContext(connection) as queries:
-            response = self.client.get("/odata/cars", format="json")
+            response = self.client.get("/odata/Cars", format="json")
 
         query_count_no_expand = len(queries)
         print(f"\n=== Cars WITHOUT expand ===")
@@ -87,7 +87,7 @@ class TestODataQueryOptimization(TestCase):
         AVEC optimisation (select_related ou prefetch_related): 2 requêtes
         """
         with CaptureQueriesContext(connection) as queries:
-            response = self.client.get("/odata/cars?$expand=owner", format="json")
+            response = self.client.get("/odata/Cars?$expand=owner", format="json")
 
         query_count_with_expand = len(queries)
         print(f"\n=== Cars WITH expand=owner ===")
@@ -120,7 +120,7 @@ class TestODataQueryOptimization(TestCase):
         AVEC optimisation: 2 requêtes
         """
         with CaptureQueriesContext(connection) as queries:
-            response = self.client.get("/odata/people?$expand=cars", format="json")
+            response = self.client.get("/odata/People?$expand=cars", format="json")
 
         query_count_with_expand = len(queries)
         print(f"\n=== Persons WITH expand=cars ===")
@@ -151,7 +151,7 @@ class TestODataQueryOptimization(TestCase):
         Et les colonnes sélectionnées doivent être limitées
         """
         with CaptureQueriesContext(connection) as queries:
-            response = self.client.get("/odata/books?$expand=author($select=name,email)", format="json")
+            response = self.client.get("/odata/Books?$expand=author($select=name,email)", format="json")
 
         query_count = len(queries)
         print(f"\n=== Books WITH expand=author($select=name,email) ===")
@@ -183,11 +183,11 @@ class TestODataQueryOptimization(TestCase):
 
         # Sans expand
         with CaptureQueriesContext(connection) as queries_no_expand:
-            response = self.client.get("/odata/cars", format="json")
+            response = self.client.get("/odata/Cars", format="json")
 
         # Avec expand
         with CaptureQueriesContext(connection) as queries_with_expand:
-            response = self.client.get("/odata/cars?$expand=owner", format="json")
+            response = self.client.get("/odata/Cars?$expand=owner", format="json")
 
         count_no = len(queries_no_expand)
         count_with = len(queries_with_expand)
@@ -217,7 +217,7 @@ class TestODataQueryOptimization(TestCase):
         """
         with CaptureQueriesContext(connection) as queries:
             response = self.client.get(
-                "/odata/people?$expand=cars($select=brand,model)",
+                "/odata/People?$expand=cars($select=brand,model)",
                 format="json"
             )
 
