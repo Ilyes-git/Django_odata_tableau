@@ -15,18 +15,20 @@ def get_dynamic_odata_registry(
         include_apps=None,
         exclude_apps=None,
         exclude_models=(),
+        custom_viewsets=None,
 ):
     """
     Build a dynamic OData registry mapping API endpoints to Django model classes.
 
     Rules:
-    - Convert model names to snake_case plural.
+    - Convert model names to PascalCase plural.
     - Exclude Django internal apps by default.
     """
 
     include_apps = set(include_apps or [])
     exclude_apps = set(exclude_apps or {"admin", "auth", "sessions", "contenttypes"})
     exclude_models = exclude_models
+    custom_viewsets = custom_viewsets or {}
 
     registry = {}
     apps_map = {}
@@ -48,7 +50,15 @@ def get_dynamic_odata_registry(
 
         # Generate endpoint
         endpoint = model_to_endpoint(model.__name__)
-        registry[endpoint] = model
+
+        # Vérifier si un custom viewset est défini pour ce modèle
+        if model.__name__ in custom_viewsets:
+            registry[endpoint] = {
+                'model': model,
+                'viewset': custom_viewsets[model.__name__]
+            }
+        else:
+            registry[endpoint] = model
 
         # --- Build apps grouping
         apps_map.setdefault(opts.app_label, []).append(model)
