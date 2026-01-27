@@ -14,7 +14,7 @@ def model_to_endpoint(model_name: str) -> str:
 def get_dynamic_odata_registry(
         include_apps=None,
         exclude_apps=None,
-        exclude_models=None,
+        exclude_models=(),
 ):
     """
     Build a dynamic OData registry mapping API endpoints to Django model classes.
@@ -26,7 +26,7 @@ def get_dynamic_odata_registry(
 
     include_apps = set(include_apps or [])
     exclude_apps = set(exclude_apps or {"admin", "auth", "sessions", "contenttypes"})
-    exclude_models = set()
+    exclude_models = exclude_models
 
     registry = {}
     apps_map = {}
