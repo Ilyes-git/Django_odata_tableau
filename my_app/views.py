@@ -12,6 +12,7 @@ import json
 
 from customaps.models import Folder, Map
 from .models import Person, Car, Product
+from .register_models import get_dynamic_odata_registry
 from .serializers import generate_serializer
 from .management.commands.generate_odata_metadata import ODataMetadataGenerator
 from second_app.models import Author, Book
@@ -32,29 +33,7 @@ from vessel.models import (
     VesselProjectHistory,
 )
 
-ODATA_MODELS_REGISTRY = {
-        'persons': Person,
-        'cars': Car,
-        'products': Product,
-        'authors': Author,
-        'books': Book,
-        'ship_classes': ShipClass,
-        'ports': Port,
-        'organisations': Organisation,
-        'roles': Role,
-        'purposes': Purpose,
-        'tasks': Task,
-        'vessels': Vessel,
-        'vessel_qualifications': VesselQualification,
-        'vessel_purposes': VesselPurpose,
-        'operational_parameters': OperationalParameter,
-        'vessel_stake_holders': VesselStakeholder,
-        'vessel_flag_mmsi_histories': VesselFlagMmsiHistory,
-        'projects': Project,
-        'vessel_project_histories': VesselProjectHistory,
-        'maps': Map,
-        'folders': Folder
-    }
+ODATA_MODELS_REGISTRY, _ = get_dynamic_odata_registry()
 
 
 class ODataFilterParser:
@@ -221,8 +200,13 @@ class ODataModelViewSet(ModelViewSet):
         self._expand_fields = {}
 
     def get_registry_entry(self):
-        """Récupère l'entry du registry pour cet entity set"""
-        return ODATA_MODELS_REGISTRY.get(self.entity_set_name)
+        """Récupère le modèle du registry pour cet entity set"""
+        entry = ODATA_MODELS_REGISTRY.get(self.entity_set_name)
+        # Si entry est un dict {'model': Model, 'viewset': ViewSet}, retourner le model
+        if isinstance(entry, dict) and 'model' in entry:
+            return entry['model']
+        # Sinon, entry est directement le Model
+        return entry
 
     def get_queryset(self):
         """Retourner le queryset avec les paramètres OData appliqués"""

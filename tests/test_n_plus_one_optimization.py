@@ -120,7 +120,7 @@ class TestODataQueryOptimization(TestCase):
         AVEC optimisation: 2 requêtes
         """
         with CaptureQueriesContext(connection) as queries:
-            response = self.client.get("/odata/persons?$expand=cars", format="json")
+            response = self.client.get("/odata/people?$expand=cars", format="json")
 
         query_count_with_expand = len(queries)
         print(f"\n=== Persons WITH expand=cars ===")
@@ -217,7 +217,7 @@ class TestODataQueryOptimization(TestCase):
         """
         with CaptureQueriesContext(connection) as queries:
             response = self.client.get(
-                "/odata/persons?$expand=cars($select=brand,model)",
+                "/odata/people?$expand=cars($select=brand,model)",
                 format="json"
             )
 

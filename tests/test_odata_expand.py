@@ -75,7 +75,7 @@ class TestODataExpandBasics(TestCase):
     def test_expand_single_relationship_reverse(self):
         """Tester $expand avec une relation reverse (OneToMany)"""
         response = self.client.get(
-            "/odata/persons?$expand=cars",
+            "/odata/people?$expand=cars",
             format="json"
         )
 
@@ -170,7 +170,7 @@ class TestODataExpandAdvanced(TestCase):
     def test_expand_with_select(self):
         """Tester $expand combiné avec $select"""
         response = self.client.get(
-            "/odata/persons?$expand=cars&$select=id,first_name,cars",
+            "/odata/people?$expand=cars&$select=id,first_name,cars",
             format="json"
         )
 
@@ -358,7 +358,7 @@ class TestODataExpandSingleEntity(TestCase):
     def test_expand_single_entity_with_relations(self):
         """Tester $expand sur une entité unique"""
         response = self.client.get(
-            f"/odata/persons({self.person.id})?$expand=cars",
+            f"/odata/people({self.person.id})?$expand=cars",
             format="json"
         )
 
@@ -382,7 +382,7 @@ class TestODataExpandSingleEntity(TestCase):
     def test_expand_single_entity_reverse_with_select(self):
         """Tester $expand + $select sur entité unique"""
         response = self.client.get(
-            f"/odata/persons({self.person.id})?$expand=cars&$select=id,first_name,cars",
+            f"/odata/people({self.person.id})?$expand=cars&$select=id,first_name,cars",
             format="json"
         )
 
@@ -427,7 +427,7 @@ class TestODataExpandEdgeCases(TestCase):
     def test_expand_empty_relations(self):
         """Tester $expand quand une entité n'a pas de relations"""
         response = self.client.get(
-            "/odata/persons?$expand=cars",
+            "/odata/people?$expand=cars",
             format="json"
         )
 
@@ -444,7 +444,7 @@ class TestODataExpandEdgeCases(TestCase):
     def test_expand_with_invalid_field_name(self):
         """Tester $expand avec un nom de champ invalide"""
         response = self.client.get(
-            "/odata/persons?$expand=nonexistent_field",
+            "/odata/people?$expand=nonexistent_field",
             format="json"
         )
 
@@ -491,7 +491,7 @@ class TestODataExpandODataMetadata(TestCase):
     def test_response_has_odata_metadata(self):
         """Tester que la réponse contient les métadonnées OData"""
         response = self.client.get(
-            "/odata/persons?$expand=cars",
+            "/odata/people?$expand=cars",
             format="json"
         )
 
@@ -506,7 +506,7 @@ class TestODataExpandODataMetadata(TestCase):
     def test_response_items_have_odata_type(self):
         """Tester que chaque item a le @odata.type"""
         response = self.client.get(
-            "/odata/persons?$expand=cars",
+            "/odata/people?$expand=cars",
             format="json"
         )
 
@@ -519,7 +519,7 @@ class TestODataExpandODataMetadata(TestCase):
     def test_single_entity_response_has_odata_metadata(self):
         """Tester que la réponse d'entité unique contient les métadonnées"""
         response = self.client.get(
-            f"/odata/persons({self.person.id})?$expand=cars",
+            f"/odata/people({self.person.id})?$expand=cars",
             format="json"
         )
 
@@ -557,7 +557,7 @@ class TestODataExpandPerformance(TestCase):
     def test_expand_large_dataset(self):
         """Tester $expand avec un grand ensemble de données"""
         response = self.client.get(
-            "/odata/persons?$expand=cars&$top=10",
+            "/odata/people?$expand=cars&$top=10",
             format="json"
         )
 

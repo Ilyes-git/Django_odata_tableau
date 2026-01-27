@@ -72,7 +72,7 @@ def test_parse_filter_exception_raises_value_error():
 
 def test_tokenize_match_group_3_string(api_client, test_data):
     """Lignes 84-85: match.group(3) string"""
-    response = api_client.get(f"/odata/persons?$filter=first_name eq 'Alice'")
+    response = api_client.get(f"/odata/people?$filter=first_name eq 'Alice'")
     assert response.status_code in [200, 400]
     if response.status_code == 200:
         data = response.json()
@@ -103,7 +103,7 @@ def test_tokenize_match_group_4_int(api_client, test_data):
 
 def test_tokenize_match_group_5_date(api_client, test_data):
     """Lignes 89-90: match.group(5) date"""
-    response = api_client.get(f"/odata/persons?$filter=birth_date eq 1990-01-01")
+    response = api_client.get(f"/odata/people?$filter=birth_date eq 1990-01-01")
     assert response.status_code in [200, 400]
     if response.status_code == 200:
         data = response.json()
@@ -142,7 +142,7 @@ def test_get_queryset_entry_none_returns_none(api_client, test_data):
     saved = ODATA_MODELS_REGISTRY.copy()
     ODATA_MODELS_REGISTRY.clear()
     try:
-        response = api_client.get(f"/odata/persons")
+        response = api_client.get(f"/odata/people")
         assert response.status_code in [200, 500]
     finally:
         ODATA_MODELS_REGISTRY.update(saved)
@@ -151,14 +151,14 @@ def test_get_queryset_entry_none_returns_none(api_client, test_data):
 def test_list_value_error_returns_400(api_client, test_data):
     """Lignes 283-284: except ValueError"""
     with patch('my_app.views.ODataModelViewSet.get_queryset', side_effect=ValueError("Test error")):
-        response = api_client.get(f"/odata/persons")
+        response = api_client.get(f"/odata/people")
         assert response.status_code == 400
 
 
 def test_list_exception_returns_500(api_client, test_data):
     """Lignes 285-286: except Exception"""
     with patch('my_app.views.ODataModelViewSet.get_queryset', side_effect=Exception("Test error")):
-        response = api_client.get(f"/odata/persons")
+        response = api_client.get(f"/odata/people")
         assert response.status_code == 500
 
 
@@ -220,7 +220,7 @@ def test_generate_metadata_should_print_output(db):
 
 def test_filter_startswith(api_client, test_data):
     """startswith"""
-    response = api_client.get(f"/odata/persons?$filter=first_name startswith 'Ali'")
+    response = api_client.get(f"/odata/people?$filter=first_name startswith 'Ali'")
     assert response.status_code in [200, 400]
     if response.status_code == 200:
         data = response.json()
@@ -230,7 +230,7 @@ def test_filter_startswith(api_client, test_data):
 
 def test_filter_endswith(api_client, test_data):
     """endswith"""
-    response = api_client.get(f"/odata/persons?$filter=last_name endswith 'th'")
+    response = api_client.get(f"/odata/people?$filter=last_name endswith 'th'")
     assert response.status_code in [200, 400]
     if response.status_code == 200:
         data = response.json()
@@ -240,7 +240,7 @@ def test_filter_endswith(api_client, test_data):
 
 def test_filter_contains(api_client, test_data):
     """contains"""
-    response = api_client.get(f"/odata/persons?$filter=first_name contains 'li'")
+    response = api_client.get(f"/odata/people?$filter=first_name contains 'li'")
     assert response.status_code in [200, 400]
     if response.status_code == 200:
         data = response.json()
@@ -261,7 +261,7 @@ def test_orderby_desc(api_client, test_data):
 
 def test_select_on_list(api_client, test_data):
     """Select sur liste - vérifie que seulement first_name est retourné"""
-    response = api_client.get(f"/odata/persons?$select=first_name&$top=1")
+    response = api_client.get(f"/odata/people?$select=first_name&$top=1")
     assert response.status_code == 200
     data = response.json()
     assert 'value' in data
@@ -274,7 +274,7 @@ def test_select_on_list(api_client, test_data):
 def test_retrieve_success(api_client, test_data):
     """retrieve success - vérifie les données exactes"""
     person = test_data['persons'][0]
-    response = api_client.get(f"/odata/persons({person.id})")
+    response = api_client.get(f"/odata/people({person.id})")
     assert response.status_code == 200
     data = response.json()
     assert data['first_name'] == person.first_name
@@ -284,7 +284,7 @@ def test_retrieve_success(api_client, test_data):
 
 def test_list_success(api_client, test_data):
     """list success - vérifie structure OData"""
-    response = api_client.get(f"/odata/persons")
+    response = api_client.get(f"/odata/people")
     assert response.status_code == 200
     data = response.json()
     assert 'value' in data
@@ -300,7 +300,7 @@ def test_service_document_success(api_client):
     data = response.json()
     assert 'value' in data
     entity_names = [item['name'] for item in data['value']]
-    assert 'persons' in entity_names
+    assert 'people' in entity_names
     assert 'cars' in entity_names
     assert 'products' in entity_names
 
@@ -407,7 +407,7 @@ def test_service_document_includes_second_app(api_client):
     data = response.json()
     entity_names = [item['name'] for item in data['value']]
     # Doit inclure au moins persons, cars, products
-    assert 'persons' in entity_names
+    assert 'people' in entity_names
     assert 'cars' in entity_names
     assert 'products' in entity_names
     # Peut inclure authors et books si second_app est disponible

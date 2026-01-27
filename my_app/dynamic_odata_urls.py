@@ -27,14 +27,26 @@ class ODataRouter:
         ]
 
         # Créer les routes pour chaque entity set enregistré
-        for entity_set_name in ODATA_MODELS_REGISTRY.keys():
-            # Créer un ViewSet dynamique pour cet entity set
-            class_name = f"{entity_set_name}ViewSet"
+        for entity_set_name, entry in ODATA_MODELS_REGISTRY.items():
+            # Vérifier si un ViewSet personnalisé est fourni
+            # entry peut être soit un Model, soit un dict {'model': Model, 'viewset': CustomViewSet}
+            if isinstance(entry, dict):
+                model = entry.get('model')
+                custom_viewset = entry.get('viewset')
+            else:
+                model = entry
+                custom_viewset = None
 
-            # Créer une classe ViewSet dynamiquement
-            DynamicViewSet = type(class_name,(ODataModelViewSet,),{'entity_set_name': entity_set_name})
+            if custom_viewset:
+                # Utiliser le ViewSet personnalisé fourni
+                DynamicViewSet = custom_viewset
+            else:
+                # Créer un ViewSet dynamique pour cet entity set
+                class_name = f"{entity_set_name}ViewSet"
+                # Créer une classe ViewSet dynamiquement
+                DynamicViewSet = type(class_name, (ODataModelViewSet,), {'entity_set_name': entity_set_name})
 
-            # Endpoint collection: /EntitySet
+            # Endpoint collection: /EntitySet (utilise entity_set_name comme URL)
             urlpatterns.append(
                 path(
                     f"{entity_set_name}",

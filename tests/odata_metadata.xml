@@ -1,0 +1,446 @@
+<?xml version="1.0" ?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="Odata">
+      <EntityType Name="Author">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="100"/>
+        <Property Name="email" Type="Edm.String" Nullable="false" MaxLength="254"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="books" Type="Collection(Odata.Book)" Partner="author"/>
+      </EntityType>
+      <EntityType Name="Book">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="title" Type="Edm.String" Nullable="false" MaxLength="200"/>
+        <Property Name="author" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="isbn" Type="Edm.String" Nullable="false" MaxLength="13"/>
+        <Property Name="pages" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="published_date" Type="Edm.Date" Nullable="false"/>
+        <Property Name="rating" Type="Edm.Decimal" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="author" Type="Odata.Author" Partner="books">
+          <ReferentialConstraint Property="author" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="Car">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="brand" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="model" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="year" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="owner" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="owner" Type="Odata.Person" Partner="cars">
+          <ReferentialConstraint Property="owner" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="Folder">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="parent" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="username" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="updated_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="subfolders" Type="Collection(Odata.Folder)" Partner="subfolders"/>
+        <NavigationProperty Name="maps" Type="Collection(Odata.Map)" Partner="folder"/>
+        <NavigationProperty Name="parent" Type="Odata.Folder" Partner="subfolders">
+          <ReferentialConstraint Property="parent" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="LogEntry">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="action_time" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="object_id" Type="Edm.String" Nullable="true"/>
+        <Property Name="object_repr" Type="Edm.String" Nullable="false" MaxLength="200"/>
+        <Property Name="action_flag" Type="Edm.Int16" Nullable="false"/>
+        <Property Name="change_message" Type="Edm.String" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+      </EntityType>
+      <EntityType Name="Map">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="data" Type="Edm.String" Nullable="false"/>
+        <Property Name="folder" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="username" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="updated_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="folder" Type="Odata.Folder" Partner="maps">
+          <ReferentialConstraint Property="folder" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="OperationalParameter">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="timewindow_h" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="max_wind_speed_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="max_wave_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="max_current_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="standard_consumption" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="theoretical_speed_kn" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="applicable_speed_kn" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="ship_class" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="purpose" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="task" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="ship_class" Type="Odata.ShipClass" Partner="operational_parameters">
+          <ReferentialConstraint Property="ship_class" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="purpose" Type="Odata.Purpose" Partner="operationalparameter">
+          <ReferentialConstraint Property="purpose" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="task" Type="Odata.Task" Partner="operationalparameter">
+          <ReferentialConstraint Property="task" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="Organisation">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false"/>
+        <Property Name="acronym" Type="Edm.String" Nullable="true" MaxLength="30"/>
+        <Property Name="address" Type="Edm.String" Nullable="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vesselstakeholder" Type="Collection(Odata.VesselStakeholder)" Partner="organisation"/>
+      </EntityType>
+      <EntityType Name="Person">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="first_name" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="last_name" Type="Edm.String" Nullable="false" MaxLength="80"/>
+        <Property Name="birth_date" Type="Edm.Date" Nullable="true"/>
+        <Property Name="full_name" Type="Edm.String" Nullable="true" Computed="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="cars" Type="Collection(Odata.Car)" Partner="owner"/>
+      </EntityType>
+      <EntityType Name="Port">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="wpi_number" Type="Edm.String" Nullable="true" MaxLength="10"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="40"/>
+        <Property Name="un_locode" Type="Edm.String" Nullable="true" MaxLength="10"/>
+        <Property Name="world_water_body" Type="Edm.String" Nullable="true"/>
+        <Property Name="tidal_range_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="entrance_width_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="anchorage_depth_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="oil_terminal_depth_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="maximum_vessel_length_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="maximum_vessel_draft_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="supplies_potable_water" Type="Edm.Boolean" Nullable="true"/>
+        <Property Name="supplies_fuel_oil" Type="Edm.Boolean" Nullable="true"/>
+        <Property Name="dry_dock" Type="Edm.String" Nullable="true" MaxLength="15"/>
+        <Property Name="latitude" Type="Edm.Double" Nullable="true"/>
+        <Property Name="longitude" Type="Edm.Double" Nullable="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vessel" Type="Collection(Odata.Vessel)" Partner="port"/>
+      </EntityType>
+      <EntityType Name="Product">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="255"/>
+        <Property Name="price" Type="Edm.Decimal" Nullable="false"/>
+        <Property Name="quantity" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="category" Type="Edm.String" Nullable="false" MaxLength="100"/>
+        <Property Name="created_at" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+      </EntityType>
+      <EntityType Name="Project">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="code" Type="Edm.String" Nullable="false" MaxLength="5"/>
+        <Property Name="name" Type="Edm.String" Nullable="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vesselprojecthistory" Type="Collection(Odata.VesselProjectHistory)" Partner="project"/>
+      </EntityType>
+      <EntityType Name="Purpose">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="20"/>
+        <Property Name="description" Type="Edm.String" Nullable="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vesselpurpose" Type="Collection(Odata.VesselPurpose)" Partner="purpose"/>
+        <NavigationProperty Name="operationalparameter" Type="Collection(Odata.OperationalParameter)" Partner="purpose"/>
+      </EntityType>
+      <EntityType Name="Role">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="10"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vesselstakeholder" Type="Collection(Odata.VesselStakeholder)" Partner="role"/>
+      </EntityType>
+      <EntityType Name="Session">
+        <Key>
+          <PropertyRef Name="session_key"/>
+        </Key>
+        <Property Name="session_key" Type="Edm.String" Nullable="false"/>
+        <Property Name="session_data" Type="Edm.String" Nullable="false"/>
+        <Property Name="expire_date" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+      </EntityType>
+      <EntityType Name="ShipClass">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="name" Type="Edm.String" Nullable="false" MaxLength="25"/>
+        <Property Name="transit_speed_kn" Type="Edm.Double" Nullable="false"/>
+        <Property Name="draught_m" Type="Edm.Double" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vessel" Type="Collection(Odata.Vessel)" Partner="ship_class"/>
+        <NavigationProperty Name="operational_parameters" Type="Collection(Odata.OperationalParameter)" Partner="ship_class"/>
+      </EntityType>
+      <EntityType Name="Task">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="acronym" Type="Edm.String" Nullable="false" MaxLength="10"/>
+        <Property Name="full_name" Type="Edm.String" Nullable="true" MaxLength="30"/>
+        <Property Name="description" Type="Edm.String" Nullable="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vesselqualification" Type="Collection(Odata.VesselQualification)" Partner="task"/>
+        <NavigationProperty Name="operationalparameter" Type="Collection(Odata.OperationalParameter)" Partner="task"/>
+        <NavigationProperty Name="vesselprojecthistory" Type="Collection(Odata.VesselProjectHistory)" Partner="task"/>
+      </EntityType>
+      <EntityType Name="Vessel">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="imo" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="name" Type="Edm.String" Nullable="true"/>
+        <Property Name="acronym" Type="Edm.String" Nullable="true" MaxLength="20"/>
+        <Property Name="main_lay" Type="Edm.Boolean" Nullable="true"/>
+        <Property Name="dynamic_positioning" Type="Edm.String" Nullable="true" MaxLength="20"/>
+        <Property Name="year_built" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="length_overall_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="width_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="draught_m" Type="Edm.Double" Nullable="true"/>
+        <Property Name="gross_tonnage_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="deadweight_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="max_speed_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="transit_speed_kn" Type="Edm.Double" Nullable="true"/>
+        <Property Name="fuel_capacity_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="fuel_safety_level_t" Type="Edm.Double" Nullable="true"/>
+        <Property Name="ship_class" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="port" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vesselqualification" Type="Collection(Odata.VesselQualification)" Partner="vessel"/>
+        <NavigationProperty Name="vesselpurpose" Type="Collection(Odata.VesselPurpose)" Partner="vessel"/>
+        <NavigationProperty Name="vesselstakeholder" Type="Collection(Odata.VesselStakeholder)" Partner="vessel"/>
+        <NavigationProperty Name="vesselflagmmsihistory" Type="Collection(Odata.VesselFlagMmsiHistory)" Partner="vessel"/>
+        <NavigationProperty Name="vesselprojecthistory" Type="Collection(Odata.VesselProjectHistory)" Partner="vessel"/>
+        <NavigationProperty Name="ship_class" Type="Odata.ShipClass" Partner="vessel">
+          <ReferentialConstraint Property="ship_class" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="port" Type="Odata.Port" Partner="vessel">
+          <ReferentialConstraint Property="port" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="VesselFlagMmsiHistory">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="flag_start_date" Type="Edm.Date" Nullable="true"/>
+        <Property Name="flag_end_date" Type="Edm.Date" Nullable="true"/>
+        <Property Name="mmsi" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="vessel" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Partner="vesselflagmmsihistory">
+          <ReferentialConstraint Property="vessel" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="VesselProjectHistory">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="rating" Type="Edm.Int32" Nullable="true"/>
+        <Property Name="comment" Type="Edm.String" Nullable="true"/>
+        <Property Name="project" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="vessel" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="task" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="project" Type="Odata.Project" Partner="vesselprojecthistory">
+          <ReferentialConstraint Property="project" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Partner="vesselprojecthistory">
+          <ReferentialConstraint Property="vessel" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="task" Type="Odata.Task" Partner="vesselprojecthistory">
+          <ReferentialConstraint Property="task" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="VesselPurpose">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="primary_purpose" Type="Edm.Boolean" Nullable="false"/>
+        <Property Name="vessel" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="purpose" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Partner="vesselpurpose">
+          <ReferentialConstraint Property="vessel" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="purpose" Type="Odata.Purpose" Partner="vesselpurpose">
+          <ReferentialConstraint Property="purpose" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="VesselQualification">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="vessel" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="task" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Partner="vesselqualification">
+          <ReferentialConstraint Property="vessel" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="task" Type="Odata.Task" Partner="vesselqualification">
+          <ReferentialConstraint Property="task" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityType Name="VesselStakeholder">
+        <Key>
+          <PropertyRef Name="id"/>
+        </Key>
+        <Property Name="id" Type="Edm.Int64" Nullable="false"/>
+        <Property Name="organisation" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="role" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="vessel" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="pk" Type="Edm.String" Nullable="true" Computed="true"/>
+        <NavigationProperty Name="organisation" Type="Odata.Organisation" Partner="vesselstakeholder">
+          <ReferentialConstraint Property="organisation" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="role" Type="Odata.Role" Partner="vesselstakeholder">
+          <ReferentialConstraint Property="role" ReferencedProperty="id"/>
+        </NavigationProperty>
+        <NavigationProperty Name="vessel" Type="Odata.Vessel" Partner="vesselstakeholder">
+          <ReferentialConstraint Property="vessel" ReferencedProperty="id"/>
+        </NavigationProperty>
+      </EntityType>
+      <EntityContainer Name="Container">
+        <EntitySet Name="authors" EntityType="Odata.Author">
+          <NavigationPropertyBinding Path="books" Target="books"/>
+        </EntitySet>
+        <EntitySet Name="books" EntityType="Odata.Book">
+          <NavigationPropertyBinding Path="author" Target="authors"/>
+        </EntitySet>
+        <EntitySet Name="cars" EntityType="Odata.Car">
+          <NavigationPropertyBinding Path="owner" Target="people"/>
+        </EntitySet>
+        <EntitySet Name="folders" EntityType="Odata.Folder">
+          <NavigationPropertyBinding Path="subfolders" Target="folders"/>
+          <NavigationPropertyBinding Path="maps" Target="maps"/>
+          <NavigationPropertyBinding Path="parent" Target="folders"/>
+        </EntitySet>
+        <EntitySet Name="LogEntrys" EntityType="Odata.LogEntry"/>
+        <EntitySet Name="maps" EntityType="Odata.Map">
+          <NavigationPropertyBinding Path="folder" Target="folders"/>
+        </EntitySet>
+        <EntitySet Name="operational_parameters" EntityType="Odata.OperationalParameter">
+          <NavigationPropertyBinding Path="ship_class" Target="ship_classes"/>
+          <NavigationPropertyBinding Path="purpose" Target="purposes"/>
+          <NavigationPropertyBinding Path="task" Target="tasks"/>
+        </EntitySet>
+        <EntitySet Name="organisations" EntityType="Odata.Organisation">
+          <NavigationPropertyBinding Path="vesselstakeholder" Target="vessel_stakeholders"/>
+        </EntitySet>
+        <EntitySet Name="people" EntityType="Odata.Person">
+          <NavigationPropertyBinding Path="cars" Target="cars"/>
+        </EntitySet>
+        <EntitySet Name="ports" EntityType="Odata.Port">
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+        </EntitySet>
+        <EntitySet Name="products" EntityType="Odata.Product"/>
+        <EntitySet Name="projects" EntityType="Odata.Project">
+          <NavigationPropertyBinding Path="vesselprojecthistory" Target="vessel_project_histories"/>
+        </EntitySet>
+        <EntitySet Name="purposes" EntityType="Odata.Purpose">
+          <NavigationPropertyBinding Path="vesselpurpose" Target="vessel_purposes"/>
+          <NavigationPropertyBinding Path="operationalparameter" Target="operational_parameters"/>
+        </EntitySet>
+        <EntitySet Name="roles" EntityType="Odata.Role">
+          <NavigationPropertyBinding Path="vesselstakeholder" Target="vessel_stakeholders"/>
+        </EntitySet>
+        <EntitySet Name="Sessions" EntityType="Odata.Session"/>
+        <EntitySet Name="ship_classes" EntityType="Odata.ShipClass">
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+          <NavigationPropertyBinding Path="operational_parameters" Target="operational_parameters"/>
+        </EntitySet>
+        <EntitySet Name="tasks" EntityType="Odata.Task">
+          <NavigationPropertyBinding Path="vesselqualification" Target="vessel_qualifications"/>
+          <NavigationPropertyBinding Path="operationalparameter" Target="operational_parameters"/>
+          <NavigationPropertyBinding Path="vesselprojecthistory" Target="vessel_project_histories"/>
+        </EntitySet>
+        <EntitySet Name="vessels" EntityType="Odata.Vessel">
+          <NavigationPropertyBinding Path="vesselqualification" Target="vessel_qualifications"/>
+          <NavigationPropertyBinding Path="vesselpurpose" Target="vessel_purposes"/>
+          <NavigationPropertyBinding Path="vesselstakeholder" Target="vessel_stakeholders"/>
+          <NavigationPropertyBinding Path="vesselflagmmsihistory" Target="vessel_flag_mmsi_histories"/>
+          <NavigationPropertyBinding Path="vesselprojecthistory" Target="vessel_project_histories"/>
+          <NavigationPropertyBinding Path="ship_class" Target="ship_classes"/>
+          <NavigationPropertyBinding Path="port" Target="ports"/>
+        </EntitySet>
+        <EntitySet Name="vessel_flag_mmsi_histories" EntityType="Odata.VesselFlagMmsiHistory">
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+        </EntitySet>
+        <EntitySet Name="vessel_project_histories" EntityType="Odata.VesselProjectHistory">
+          <NavigationPropertyBinding Path="project" Target="projects"/>
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+          <NavigationPropertyBinding Path="task" Target="tasks"/>
+        </EntitySet>
+        <EntitySet Name="vessel_purposes" EntityType="Odata.VesselPurpose">
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+          <NavigationPropertyBinding Path="purpose" Target="purposes"/>
+        </EntitySet>
+        <EntitySet Name="vessel_qualifications" EntityType="Odata.VesselQualification">
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+          <NavigationPropertyBinding Path="task" Target="tasks"/>
+        </EntitySet>
+        <EntitySet Name="vessel_stakeholders" EntityType="Odata.VesselStakeholder">
+          <NavigationPropertyBinding Path="organisation" Target="organisations"/>
+          <NavigationPropertyBinding Path="role" Target="roles"/>
+          <NavigationPropertyBinding Path="vessel" Target="vessels"/>
+        </EntitySet>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

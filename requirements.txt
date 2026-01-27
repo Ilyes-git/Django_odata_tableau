@@ -8,3 +8,6 @@ pytest==9.0.1
 pytest-django==4.11.1
 pytest-cov==7.0.0
 faker==38.0.0
+
+
+inflection==0.5.1
