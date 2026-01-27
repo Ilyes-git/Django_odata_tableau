@@ -162,7 +162,7 @@ class ODataAPIPropertyTest(APITestCase):
 
     def test_odata_list_includes_properties(self):
         """Vérifier que l'API /odata/persons inclut les propriétés"""
-        response = self.client.get('/odata/persons')
+        response = self.client.get('/odata/people')
 
         self.assertEqual(response.status_code, 200)
 
@@ -181,7 +181,7 @@ class ODataAPIPropertyTest(APITestCase):
 
     def test_odata_list_full_name_values(self):
         """Vérifier que les valeurs de full_name sont correctes"""
-        response = self.client.get('/odata/persons')
+        response = self.client.get('/odata/people')
 
         data = response.json()
         persons = {p['id']: p for p in data['value']}
@@ -192,7 +192,7 @@ class ODataAPIPropertyTest(APITestCase):
 
     def test_odata_retrieve_includes_properties(self):
         """Vérifier que l'API GET /odata/persons(id) inclut les propriétés"""
-        response = self.client.get(f'/odata/persons({self.person1.id})')
+        response = self.client.get(f'/odata/people({self.person1.id})')
 
         self.assertEqual(response.status_code, 200)
 
@@ -205,7 +205,7 @@ class ODataAPIPropertyTest(APITestCase):
         # Les propriétés ne devraient pas être modifiables
         # (ce test vérifie que la tentative de modification est ignorée)
         response = self.client.patch(
-            f'/odata/persons({self.person1.id})',
+            f'/odata/people({self.person1.id})',
             data={
                 'full_name': 'Invalid Name'  # Essayer de modifier la propriété
             },
@@ -222,7 +222,7 @@ class ODataAPIPropertyTest(APITestCase):
 
     def test_select_parameter_includes_properties(self):
         """Vérifier que $select fonctionne avec les propriétés"""
-        response = self.client.get('/odata/persons?$select=first_name,full_name')
+        response = self.client.get('/odata/people?$select=first_name,full_name')
 
         self.assertEqual(response.status_code, 200)
 
